@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** Active — Phase 0 Complete → Phase 1 Starting
+**Status:** Active — Phases 1, 2 & 3 Complete → Phase 4 Starting
 
 ---
 
@@ -61,21 +61,21 @@ The defining feature is the **Human-in-the-Loop (HITL)** pattern: no order ever 
 
 ## 2. Current Status
 
-### Phase: **0 — Planning & Documentation Complete**
-### Next Phase: **1 — Foundation & Database** *(not yet started)*
+### Phase: **3 — The AI Brain Complete**
+### Next Phase: **4 — Frontend Skeleton & Routing** *(starting now)*
 
 ```
 [x] Phase 0 — Planning & Documentation
-[ ] Phase 1 — Foundation & Database
-[ ] Phase 2 — Authentication & Security
-[ ] Phase 3 — The AI Brain
+[x] Phase 1 — Foundation & Database
+[x] Phase 2 — Authentication & Security
+[x] Phase 3 — The AI Brain
 [ ] Phase 4 — Frontend Skeleton & Routing
 [ ] Phase 5 — The Manager Experience
 [ ] Phase 6 — The Customer Experience
 [ ] Phase 7 — Polish & Deployment
 ```
 
-**As of this writing:** The entire project has been planned in detail. All documentation files have been written and are stored in the `About/` folder. No production code has been written yet. The project is ready to begin Phase 1.
+**As of this writing:** The entire FastAPI backend is fully operational. The SQLite database is seeded and running. Supabase JWT authentication and Upstash Redis rate limiting are implemented and wired up. The LangGraph AI agent (GPT-4o-mini) is live with all 9 tools and the full HITL interrupt flow. The project is now ready to begin Phase 4 — the React frontend.
 
 ---
 
@@ -107,35 +107,63 @@ The following features were added or adjusted during the planning phase and are 
 
 The project directory may contain original Python assignment files from a previous iteration of this project. These files are **reference only** and are not part of the new build. The new application is being built from scratch using the React + FastAPI architecture defined in this documentation.
 
+### Milestone 1.0 — Full FastAPI Backend Complete ✅
+
+The entire Python/FastAPI backend is built and operational across three completed phases:
+
+**Phase 1 — Foundation & Database:**
+- Multi-file FastAPI app (`app/main.py`, `app/database.py`) running on Uvicorn.
+- Six SQLAlchemy models created: `users`, `menu_items`, `orders`, `order_items`, `reward_points`, `chat_sessions`.
+- Critical database constraints in place: `CHECK (stock_quantity >= 0)`, `CHECK (role IN ('customer','manager'))`, foreign key enforcement via `PRAGMA foreign_keys=ON`.
+- WAL mode enabled on SQLite for improved concurrency.
+- `seed.py` script loads 16 menu items across 4 categories (Starters, Mains, Desserts, Beverages) with varied dietary flags and stock levels.
+
+**Phase 2 — Authentication & Security:**
+- `middleware/auth.py`: `get_current_user()` verifies Supabase JWTs via PyJWKClient (JWKS endpoint); `require_manager()` enforces role-based access control (403 on failure). `CurrentUser` and `ManagerUser` type aliases for clean route signatures.
+- `middleware/rate_limit.py`: Upstash Redis FixedWindow rate limiter (30 req/60s per user UUID). Returns 429 with `Retry-After` header per RULES.md § E-3. Fail-open design on Redis outage.
+- `routes/auth.py`: `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`. Signup auto-creates a local `users` row. Login failures return a generic 401 per RULES.md § E-4.
+- Global 500 exception handler in `main.py` per RULES.md § E-1: all unhandled errors return structured `{"error": true, "code": "INTERNAL_ERROR", ...}`.
+
+**Phase 3 — The AI Brain:**
+- `agents/tools.py`: 9 pure tool functions (adapted from original assignment + 2 new reward tools). Tools use `with_for_update()` locking on critical stock operations. `unit_price` is snapshotted at add-to-cart time per RULES.md § D-5. `redeem_reward()` is fully atomic (cart add + negative ledger entry in one transaction).
+- `agents/system_prompt.py`: Detailed system prompt encoding all 7 AI guardrails (A-1 through A-7) with concrete examples.
+- `agents/agent.py`: LangGraph StateGraph with 4 nodes (`agent_node`, `tool_node`, `manager_review_node`, routing edges). MemorySaver checkpointing with `thread_id = customer_id`. `interrupt()` in `manager_review_node` implements the HITL pause. `run_agent()` and `get_conversation_history()` are the public API.
+- `routes/chat.py`: `POST /chat/message` (rate-limited + JWT-protected), `GET /chat/history`.
+
 ---
 
 ## 4. Next Immediate Steps
 
-These are the very first coding tasks to execute when starting Phase 1. Complete them in order.
+These are the first tasks to execute for Phase 4. Complete them in order.
 
-**Step 1 — Initialize the Repository**
-- Create the project root folder (if not already done).
-- Run `git init` and create an initial commit with just the `About/` documentation folder.
-- Create a `.gitignore` file and add: `.env`, `__pycache__/`, `*.db`, `node_modules/`, `dist/`.
+**Step 1 — Initialize the React App**
+- Navigate to the `frontend/` folder (create it if it doesn't exist).
+- Bootstrap with Vite: `npm create vite@latest . -- --template react`
+- Install Tailwind CSS and configure it per the Vite setup guide.
+- Install core dependencies: `npm install react-router-dom axios recharts @supabase/supabase-js`
+- Delete Vite boilerplate (`App.css`, default content in `App.jsx`).
 
-**Step 2 — Set Up the Backend Skeleton**
-- Create the `backend/` directory.
-- Set up a Python virtual environment inside `backend/`: `python -m venv venv`
-- Install core dependencies: `fastapi uvicorn sqlalchemy python-dotenv pydantic`
-- Create `backend/app/main.py` with a minimal FastAPI app and a health check route (`GET /health`).
-- Confirm the server starts: `uvicorn app.main:app --reload`
+**Step 2 — Apply the Everforest Theme**
+- Add the Everforest dark theme tokens to `tailwind.config.js` as custom colors:
+  - `bg-base: #2D353B`, `bg-surface: #343F44`, `accent-green: #A7C080`
+  - `danger-red: #E67E80`, `warning-yellow: #DBBC7F`
+  - `text-primary: #D3C6AA`, `text-muted: #9DA9A0`
+- Add the `Inter` font from Google Fonts to `index.html`.
+- Set the default background and font in `index.css`.
 
-**Step 3 — Set Up the Database Models**
-- Create `backend/app/database.py` to configure the SQLAlchemy engine pointing to `restaurant.db`.
-- Create the `backend/app/models/` directory.
-- Write all 6 SQLAlchemy models: `user.py`, `menu_item.py`, `order.py`, `order_item.py`, `reward_point.py`, `chat_session.py`.
-- Call `Base.metadata.create_all()` on startup and verify all tables are created.
+**Step 3 — Create the Folder Structure**
+- Create `src/` sub-folders: `components/`, `pages/`, `hooks/`, `services/`, `context/`, `assets/`.
 
-**Step 4 — Seed the Database**
-- Write `backend/seed.py` with at least 12 menu items across 4 categories.
-- Run the seed script and confirm data appears in the `restaurant.db` file.
+**Step 4 — Auth Context & Protected Routes**
+- Create `context/AuthContext.jsx` wrapping the entire app with login/logout/signup state.
+- Create `components/ProtectedRoute.jsx` and the manager-only route guard.
 
-> For full task details for each step, see `About/PHASES.md` → Phase 1.
+**Step 5 — Pages & Routing**
+- Create 8 empty page components (placeholder text is fine for now).
+- Wire all routes in `App.jsx` using React Router.
+- Confirm `npm run dev` starts and navigating to each route shows the correct placeholder.
+
+> For full task details for each step, see `About/PHASES.md` → Phase 4.
 
 ---
 
@@ -151,6 +179,9 @@ This table tracks every significant change made to the project — scope additio
 | July 2026 | Analytics feature added: PRD updated to v3.0 (F-M7), ARCHITECTURE updated (Recharts section 2.7, analytics routers), RULES updated (Rule D-7), PHASES updated (sections 5.6, 5.7) | Aditya |
 | July 2026 | DESIGN.md created: Full Everforest design system documented including color palette, typography, component specs, and Recharts chart styling | Aditya |
 | July 2026 | HISTORY.md created: Project memory file initialized at Phase 0 complete | Aditya |
+| July 2026 | **Phase 1 complete:** FastAPI server, SQLAlchemy engine (WAL + FK pragmas), all 6 ORM models with constraints, seed.py (16 items / 4 categories). Backend directory: `Backend/app/` | Aditya |
+| July 2026 | **Phase 2 complete:** Supabase JWKS JWT verification (`middleware/auth.py`), role guard (`require_manager`), Upstash Redis rate limiter with `Retry-After` header (`middleware/rate_limit.py`), auth proxy routes (`routes/auth.py`), global 500 exception handler in `main.py` | Aditya |
+| July 2026 | **Phase 3 complete:** LangGraph StateGraph agent (4 nodes, MemorySaver, `interrupt()` HITL), all 9 tools with `with_for_update()` locking and price snapshots, system prompt encoding Rules A-1–A-7, chat routes `POST /chat/message` + `GET /chat/history` | Aditya |
 
 ---
 

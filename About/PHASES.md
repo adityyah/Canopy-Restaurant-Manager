@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** v1.0
+**Status:** v1.1 — Phases 1, 2 & 3 Complete
 
 ---
 
@@ -25,7 +25,7 @@
 
 ---
 
-## Phase 1 — Foundation & Database
+## Phase 1 — Foundation & Database ✅
 
 **Goal:** Get the project structure in place, wire up FastAPI, and build every database model. By the end of this phase you should be able to run the backend server and inspect a working SQLite database with all the right tables.
 
@@ -35,25 +35,25 @@ Think of this phase as laying the concrete foundation before building the walls.
 
 ### 1.1 — Project Setup
 
-- [ ] Create the project root folder and initialize a Git repository.
-- [ ] Create a `backend/` folder for the FastAPI application.
-- [ ] Create a `frontend/` folder (will be filled in Phase 4).
-- [ ] Create an `About/` folder and commit all existing documentation (PRD, ARCHITECTURE, RULES, PHASES).
-- [ ] Set up a Python virtual environment inside `backend/` and install core dependencies:
+- [x] Create the project root folder and initialize a Git repository.
+- [x] Create a `backend/` folder for the FastAPI application.
+- [x] Create a `frontend/` folder (will be filled in Phase 4).
+- [x] Create an `About/` folder and commit all existing documentation (PRD, ARCHITECTURE, RULES, PHASES).
+- [x] Set up a Python virtual environment inside `backend/` and install core dependencies:
   - `fastapi`, `uvicorn` (the server that runs FastAPI)
   - `sqlalchemy` (the ORM that talks to SQLite)
   - `python-dotenv` (to load secret keys from a `.env` file)
   - `pydantic` (for data validation, already bundled with FastAPI)
-- [ ] Create a `.env` file in `backend/` for all environment variables (database path, API keys, etc.).
-- [ ] Add `.env` to `.gitignore` immediately — never commit secrets.
-- [ ] Create a `backend/app/` directory and a `main.py` entry point that starts a basic FastAPI app.
-- [ ] Confirm the server runs with `uvicorn app.main:app --reload` and the default `/docs` page loads.
+- [x] Create a `.env` file in `backend/` for all environment variables (database path, API keys, etc.).
+- [x] Add `.env` to `.gitignore` immediately — never commit secrets.
+- [x] Create a `backend/app/` directory and a `main.py` entry point that starts a basic FastAPI app.
+- [x] Confirm the server runs with `uvicorn app.main:app --reload` and the default `/docs` page loads.
 
 ---
 
 ### 1.2 — Project Folder Structure
 
-- [ ] Organize the `backend/app/` folder into the following sub-folders:
+- [x] Organize the `backend/app/` folder into the following sub-folders:
   ```
   backend/
   └── app/
@@ -71,8 +71,8 @@ Think of this phase as laying the concrete foundation before building the walls.
 
 ### 1.3 — Database Setup
 
-- [ ] Create `database.py` to configure the SQLAlchemy engine pointing to the local `restaurant.db` SQLite file.
-- [ ] Write a `get_db()` dependency function that opens and closes a database session per request.
+- [x] Create `database.py` to configure the SQLAlchemy engine pointing to the local `restaurant.db` SQLite file.
+- [x] Write a `get_db()` dependency function that opens and closes a database session per request.
 
 ---
 
@@ -80,36 +80,36 @@ Think of this phase as laying the concrete foundation before building the walls.
 
 Create one file per table inside `models/`. Each file defines the columns, data types, and relationships for that table.
 
-- [ ] **`models/user.py`** — `users` table
+- [x] **`models/user.py`** — `users` table
   - Columns: `id` (UUID, primary key), `email`, `role` (`customer` / `manager`), `created_at`
 
-- [ ] **`models/menu_item.py`** — `menu_items` table
+- [x] **`models/menu_item.py`** — `menu_items` table
   - Columns: `id`, `name` (unique), `description`, `category`, `price`, `stock_quantity`, `is_vegetarian`, `is_vegan`, `is_gluten_free`, `is_active`, `created_at`, `updated_at`
   - Add a database-level constraint: `CHECK (stock_quantity >= 0)`
 
-- [ ] **`models/order.py`** — `orders` table
+- [x] **`models/order.py`** — `orders` table
   - Columns: `id`, `customer_id` (FK → users), `status` (Enum: DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, CANCELLED), `total_amount`, `rejection_reason`, `manager_id` (FK → users, nullable), `created_at`, `submitted_at`, `resolved_at`
 
-- [ ] **`models/order_item.py`** — `order_items` table
+- [x] **`models/order_item.py`** — `order_items` table
   - Columns: `id`, `order_id` (FK → orders), `menu_item_id` (FK → menu_items), `quantity`, `unit_price` (price snapshot), `subtotal`
 
-- [ ] **`models/reward_point.py`** — `reward_points` table
+- [x] **`models/reward_point.py`** — `reward_points` table
   - Columns: `id`, `customer_id` (FK → users), `order_id` (FK → orders, nullable), `points_change` (positive = earned, negative = redeemed), `reason`, `created_at`
 
-- [ ] **`models/chat_session.py`** — `chat_sessions` table
+- [x] **`models/chat_session.py`** — `chat_sessions` table
   - Columns: `id`, `customer_id` (FK → users), `order_id` (FK → orders, nullable), `messages` (JSON column), `created_at`, `updated_at`
 
-- [ ] Run `Base.metadata.create_all(bind=engine)` on startup to create all tables.
-- [ ] Inspect the `restaurant.db` file with a SQLite viewer (e.g., DB Browser for SQLite) to confirm all tables and columns exist correctly.
+- [x] Run `Base.metadata.create_all(bind=engine)` on startup to create all tables.
+- [x] Inspect the `restaurant.db` file with a SQLite viewer (e.g., DB Browser for SQLite) to confirm all tables and columns exist correctly.
 
 ---
 
 ### 1.5 — Seed Data
 
-- [ ] Write a `seed.py` script in `backend/` that populates the `menu_items` table with at least 12 sample items across 4 categories (Starters, Mains, Desserts, Beverages).
-- [ ] Include a mix of vegetarian, vegan, and gluten-free items.
-- [ ] Set realistic prices and stock quantities (e.g., 20–50 units each).
-- [ ] Run the seed script and confirm items appear in the database.
+- [x] Write a `seed.py` script in `backend/` that populates the `menu_items` table with at least 12 sample items across 4 categories (Starters, Mains, Desserts, Beverages).
+- [x] Include a mix of vegetarian, vegan, and gluten-free items.
+- [x] Set realistic prices and stock quantities (e.g., 20–50 units each).
+- [x] Run the seed script and confirm items appear in the database.
 
 ---
 
@@ -120,7 +120,7 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
-## Phase 2 — Authentication & Security
+## Phase 2 — Authentication & Security ✅
 
 **Goal:** Lock down the application. By the end of this phase, only authenticated users can access the API, and only managers can access manager routes. The AI chat endpoint is also protected against spam.
 
@@ -128,32 +128,32 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 2.1 — Supabase Setup
 
-- [ ] Create a free Supabase project at [supabase.com](https://supabase.com).
-- [ ] Grab the `SUPABASE_URL` and `SUPABASE_ANON_KEY` from the Supabase dashboard and add them to `.env`.
-- [ ] Install the Supabase Python client: `pip install supabase`.
-- [ ] Create two test accounts in Supabase:
+- [x] Create a free Supabase project at [supabase.com](https://supabase.com).
+- [x] Grab the `SUPABASE_URL` and `SUPABASE_ANON_KEY` from the Supabase dashboard and add them to `.env`.
+- [x] Install the Supabase Python client: `pip install supabase`.
+- [x] Create two test accounts in Supabase:
   - One with `role = customer` (e.g., `customer@test.com`)
   - One with `role = manager` (e.g., `manager@test.com`)
-- [ ] Manually insert corresponding rows into the local `users` table for these accounts (matching the Supabase user UUIDs).
+- [x] Manually insert corresponding rows into the local `users` table for these accounts (matching the Supabase user UUIDs).
 
 ---
 
 ### 2.2 — JWT Verification Middleware
 
-- [ ] Write a `get_current_user()` dependency in `middleware/auth.py` that:
+- [x] Write a `get_current_user()` dependency in `middleware/auth.py` that:
   - Reads the `Authorization: Bearer <token>` header from every incoming request.
   - Calls Supabase to verify the token is valid and not expired.
   - Looks up the user in the local `users` table using the UUID from the token.
   - Returns the user object if valid, or raises a `401 Unauthorized` error if not.
-- [ ] Write a `require_manager()` dependency that calls `get_current_user()` and additionally checks that `user.role == "manager"`. Raises a `403 Forbidden` error if the check fails.
-- [ ] Apply `get_current_user` to all customer-facing protected routes.
-- [ ] Apply `require_manager` to all `/manager/*` routes.
+- [x] Write a `require_manager()` dependency that calls `get_current_user()` and additionally checks that `user.role == "manager"`. Raises a `403 Forbidden` error if the check fails.
+- [x] Apply `get_current_user` to all customer-facing protected routes.
+- [x] Apply `require_manager` to all `/manager/*` routes.
 
 ---
 
 ### 2.3 — Auth Routes
 
-- [ ] Create `routes/auth.py` with the following endpoints, which act as a thin wrapper around Supabase:
+- [x] Create `routes/auth.py` with the following endpoints, which act as a thin wrapper around Supabase:
   - `POST /auth/signup` — registers a new customer account
   - `POST /auth/login` — logs in and returns the Supabase JWT
   - `POST /auth/logout` — invalidates the session
@@ -162,25 +162,25 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 2.4 — Redis Rate Limiting
 
-- [ ] Create a free Upstash Redis database at [upstash.com](https://upstash.com).
-- [ ] Add the `UPSTASH_REDIS_URL` to `.env`.
-- [ ] Install the Redis client: `pip install redis` or `pip install upstash-redis`.
-- [ ] Write a `rate_limit()` dependency in `middleware/rate_limit.py` that:
+- [x] Create a free Upstash Redis database at [upstash.com](https://upstash.com).
+- [x] Add the `UPSTASH_REDIS_URL` to `.env`.
+- [x] Install the Redis client: `pip install redis` or `pip install upstash-redis`.
+- [x] Write a `rate_limit()` dependency in `middleware/rate_limit.py` that:
   - Uses the authenticated user's ID as the key.
   - Tracks how many chat messages the user has sent in the last 60 seconds.
   - Allows up to 30 messages per minute.
   - Returns a `429 Too Many Requests` response with a `Retry-After` header if the limit is exceeded.
-- [ ] Apply this middleware specifically to the `POST /chat/message` endpoint (Phase 3).
+- [x] Apply this middleware specifically to the `POST /chat/message` endpoint (Phase 3).
 
 ---
 
 ### 2.5 — Test Auth
 
-- [ ] Use the FastAPI `/docs` UI (or a tool like Postman / HTTPie) to:
-  - [ ] Confirm that hitting a protected route without a token returns `401`.
-  - [ ] Confirm that logging in returns a valid JWT.
-  - [ ] Confirm that using a customer token on a `/manager/` route returns `403`.
-  - [ ] Confirm that using a manager token on a `/manager/` route returns `200`.
+- [x] Use the FastAPI `/docs` UI (or a tool like Postman / HTTPie) to:
+  - [x] Confirm that hitting a protected route without a token returns `401`.
+  - [x] Confirm that logging in returns a valid JWT.
+  - [x] Confirm that using a customer token on a `/manager/` route returns `403`.
+  - [x] Confirm that using a manager token on a `/manager/` route returns `200`.
 
 ---
 
@@ -191,7 +191,7 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
-## Phase 3 — The AI Brain
+## Phase 3 — The AI Brain ✅
 
 **Goal:** Build the AI ordering agent. By the end of this phase, you can send a message to the `/chat/message` endpoint, and the AI will respond using real data from the SQLite database — never making anything up.
 
@@ -199,15 +199,15 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 3.1 — OpenAI Setup
 
-- [ ] Add `OPENAI_API_KEY` to `.env`.
-- [ ] Install the OpenAI Python library: `pip install openai`.
-- [ ] Create `agents/agent.py` — the main file that sets up and runs the GPT-4o-mini agent.
+- [x] Add `OPENAI_API_KEY` to `.env`.
+- [x] Install the OpenAI Python library: `pip install openai`.
+- [x] Create `agents/agent.py` — the main file that sets up and runs the GPT-4o-mini agent.
 
 ---
 
 ### 3.2 — The System Prompt
 
-- [ ] Write the system prompt in `agents/system_prompt.py`. This is the set of instructions given to the AI at the start of every conversation. The system prompt must clearly tell the AI:
+- [x] Write the system prompt in `agents/system_prompt.py`. This is the set of instructions given to the AI at the start of every conversation. The system prompt must clearly tell the AI:
   - Its role: *"You are a friendly ordering assistant for [Restaurant Name]."*
   - Its constraints: only use the provided tools; never guess menu items or prices.
   - Confirmation rule: always call `get_cart_summary` and show the total before calling `submit_order`.
@@ -218,23 +218,23 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 3.3 — Tool Definitions
 
-- [ ] Create `agents/tools.py` — define all agent tools as OpenAI function-calling schemas. Each tool needs a name, description, and a list of parameters. Build the following:
+- [x] Create `agents/tools.py` — define all agent tools as OpenAI function-calling schemas. Each tool needs a name, description, and a list of parameters. Build the following:
 
-  - [ ] **`get_menu_items`** — fetches all active items from `menu_items`, optionally filtered by category or dietary flag.
-  - [ ] **`get_item_by_name`** — looks up a single active item by name; returns its details or a "not found" signal.
-  - [ ] **`add_item_to_cart`** — adds a verified item and quantity to the DRAFT order in the database.
-  - [ ] **`remove_item_from_cart`** — removes or reduces an item in the DRAFT order.
-  - [ ] **`get_cart_summary`** — returns the current DRAFT order contents with a calculated grand total.
-  - [ ] **`clear_cart`** — empties the current DRAFT order entirely.
-  - [ ] **`get_reward_balance`** — sums all `points_change` values for the current customer from the `reward_points` table.
-  - [ ] **`redeem_reward`** — adds the free item at ₹0 to the cart and inserts a negative `reward_points` entry.
-  - [ ] **`submit_order`** — moves the order from `DRAFT` to `PENDING_APPROVAL` and snaps the final total.
+  - [x] **`get_menu_items`** — fetches all active items from `menu_items`, optionally filtered by category or dietary flag.
+  - [x] **`get_item_by_name`** — looks up a single active item by name; returns its details or a "not found" signal.
+  - [x] **`add_item_to_cart`** — adds a verified item and quantity to the DRAFT order in the database.
+  - [x] **`remove_item_from_cart`** — removes or reduces an item in the DRAFT order.
+  - [x] **`get_cart_summary`** — returns the current DRAFT order contents with a calculated grand total.
+  - [x] **`clear_cart`** — empties the current DRAFT order entirely.
+  - [x] **`get_reward_balance`** — sums all `points_change` values for the current customer from the `reward_points` table.
+  - [x] **`redeem_reward`** — adds the free item at ₹0 to the cart and inserts a negative `reward_points` entry.
+  - [x] **`submit_order`** — moves the order from `DRAFT` to `PENDING_APPROVAL` and snaps the final total.
 
 ---
 
 ### 3.4 — The Agent Loop
 
-- [ ] In `agents/agent.py`, build the agent execution loop:
+- [x] In `agents/agent.py`, build the agent execution loop:
   1. Receive the user's message and the full chat history.
   2. Call the OpenAI API with the system prompt, history, and tool definitions.
   3. If the model returns a tool call, execute the matching Python function (which queries the DB).
@@ -246,22 +246,22 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 3.5 — Chat Route
 
-- [ ] Create `routes/chat.py` with:
+- [x] Create `routes/chat.py` with:
   - `POST /chat/message` — accepts a message string, loads the customer's active chat session from the database, runs the agent loop, saves the updated conversation back to `chat_sessions`, and returns the AI's response.
   - `GET /chat/history/{session_id}` — returns the full message history for a given session.
-- [ ] Apply the `get_current_user` and `rate_limit` dependencies to `POST /chat/message`.
+- [x] Apply the `get_current_user` and `rate_limit` dependencies to `POST /chat/message`.
 
 ---
 
 ### 3.6 — Test the Agent
 
-- [ ] Use the `/docs` UI to send test messages and confirm:
-  - [ ] The AI lists only active menu items (not inactive ones).
-  - [ ] The AI refuses to add a made-up item.
-  - [ ] The AI correctly calculates the cart total.
-  - [ ] The AI refuses to submit without confirmation.
-  - [ ] The AI correctly checks and reports the reward point balance.
-  - [ ] The AI applies a reward redemption and adds the ₹0 item to the cart.
+- [x] Use the `/docs` UI to send test messages and confirm:
+  - [x] The AI lists only active menu items (not inactive ones).
+  - [x] The AI refuses to add a made-up item.
+  - [x] The AI correctly calculates the cart total.
+  - [x] The AI refuses to submit without confirmation.
+  - [x] The AI correctly checks and reports the reward point balance.
+  - [x] The AI applies a reward redemption and adds the ₹0 item to the cart.
 
 ---
 
@@ -671,9 +671,9 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 
 | Phase | Focus | Key Outcome |
 |---|---|---|
-| **Phase 1** | Foundation & Database | FastAPI running, all 6 DB tables created, seed data loaded |
-| **Phase 2** | Authentication & Security | Supabase auth working, role guards enforced, rate limiter active |
-| **Phase 3** | The AI Brain | GPT-4o-mini agent responding with real menu data, all 9 tools working |
+| **Phase 1** ✅ | Foundation & Database | FastAPI running, all 6 DB tables created, seed data loaded |
+| **Phase 2** ✅ | Authentication & Security | Supabase auth working, role guards enforced, rate limiter active |
+| **Phase 3** ✅ | The AI Brain | GPT-4o-mini agent responding with real menu data, all 9 tools working |
 | **Phase 4** | Frontend Skeleton | React app with routing, Everforest theme, auth flow, placeholder pages |
 | **Phase 5** | Manager Experience | Full dashboard: approve/reject orders, manage inventory & stock |
 | **Phase 6** | Customer Experience | Chat UI, order status, rewards, modification with stock restoration |
@@ -681,4 +681,4 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 
 ---
 
-*End of PHASES.md v1.0*
+*End of PHASES.md v1.1 — Updated July 2026: Phases 1, 2 & 3 marked complete.*
