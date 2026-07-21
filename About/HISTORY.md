@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** Active — Phases 1, 2, 3 & 3.5 Complete → Phase 4 Starting
+**Status:** Active — Phase 4 Complete → Phase 5 Starting
 
 ---
 
@@ -70,13 +70,13 @@ The defining feature is the **Human-in-the-Loop (HITL)** pattern: no order ever 
 [x] Phase 2 — Authentication & Security
 [x] Phase 3 — The AI Brain
 [x] Phase 3.5 — Daily Delights & AI Insights (Backend Expansion)
-[ ] Phase 4 — Frontend Skeleton & Routing
+[x] Phase 4 — Frontend Skeleton & Routing
 [ ] Phase 5 — The Manager Experience
 [ ] Phase 6 — The Customer Experience
 [ ] Phase 7 — Polish & Deployment
 ```
 
-**As of this writing:** The full FastAPI backend is complete and expanded. Two new Phase 3.5 features are live: (1) Daily Delight — the highest-stock item is flagged as the day's special and recommended by the AI in its greeting; (2) AI Insights — the manager can request a GPT-4o-mini-generated 2-sentence inventory and demand briefing. The project is ready to begin Phase 4 — the React frontend.
+**As of this writing:** The React/Vite frontend skeleton is fully initialised and wired to the FastAPI backend. Tailwind CSS is configured with the complete Everforest dark palette. React Router is set up with all 8 routes and role-based ProtectedRoute guards. The Axios API client attaches JWTs automatically and translates all backend error codes to user-friendly messages. The HealthCheck component visually confirms the frontend→backend connection is live. Phase 5 (Manager Experience) begins next.
 
 ---
 
@@ -147,40 +147,60 @@ The entire Python/FastAPI backend is built and operational across three complete
 - `app/routes/manager.py` created as the Phase 3.5 manager utility router.
 - Mounted at `/manager` prefix in `main.py` (Phase 3.5 section, separate from the Phase 5 manager routes planned later).
 
+### Milestone 2.0 — Phase 4: Frontend Skeleton & Routing ✅
+
+**Project scaffold:**
+- `Frontend/` directory initialised with Vite + React 18 + TypeScript.
+- All dependencies installed: `react-router-dom`, `axios`, `recharts`, `@supabase/supabase-js`, `tailwindcss`, `postcss`, `autoprefixer`.
+
+**Tailwind & Design System:**
+- `tailwind.config.js`: full Everforest palette (4 backgrounds, 3 text, 5 accents) as named tokens.
+- Custom animations: `fade-in`, `dot-bounce`, `skeleton-pulse`.
+- `src/index.css`: `@layer components` with `.card`, `.btn-primary/danger/ghost`, 5 `.badge-*` variants, `.input`, `.skeleton`, `.page-container`.
+- `index.html`: Inter + JetBrains Mono from Google Fonts.
+
+**Axios Client (`src/api/client.ts`):**
+- Single instance at `/api` (proxied to `:8000` by Vite).
+- Request interceptor attaches `canopy_jwt` from localStorage as Bearer token.
+- Response interceptor translates 9 error codes → user-friendly messages (RULES.md § E-5).
+- Dispatches `canopy:session-expired` on 401; typed `api.get/post/put/patch/delete` wrappers.
+
+**Auth Context (`src/context/AuthContext.tsx`):**
+- Session restore from localStorage on mount. `login/signup/logout` functions managing `canopy_jwt` + `canopy_user`.
+
+**Routing (`src/App.tsx`):**
+- All 8 routes from PHASES.md § 4.4 with correct `ProtectedRoute` guards.
+- `HealthCheck` overlay in bottom-right corner (dev mode only).
+
+**Shared Components:** `LoadingSpinner`, `StatusBadge`, `Navbar`, `ProtectedRoute`, `HealthCheck`.
+**Chart Components:** `RevenueLineChart`, `TopItemsPieChart`, `InventoryBarChart` (all fully styled).
+**8 Page Stubs:** All named and routing correctly.
+
 ---
 
 ## 4. Next Immediate Steps
 
-These are the first tasks to execute for Phase 4. Complete them in order.
+**Step 1 — Backend: Order Management Routes**
+- Create `routes/manager_orders.py` with `GET /manager/orders/pending`, `GET /manager/orders`, `POST /manager/orders/{id}/approve`, `POST /manager/orders/{id}/reject`.
+- All routes protected by `require_manager`.
 
-**Step 1 — Initialize the React App**
-- Navigate to the `frontend/` folder (create it if it doesn't exist).
-- Bootstrap with Vite: `npm create vite@latest . -- --template react`
-- Install Tailwind CSS and configure it per the Vite setup guide.
-- Install core dependencies: `npm install react-router-dom axios recharts @supabase/supabase-js`
-- Delete Vite boilerplate (`App.css`, default content in `App.jsx`).
+**Step 2 — Backend: Menu & Inventory Routes**
+- Create `routes/manager_menu.py` with full CRUD + stock patch + toggle + soft-delete.
 
-**Step 2 — Apply the Everforest Theme**
-- Add the Everforest dark theme tokens to `tailwind.config.js` as custom colors:
-  - `bg-base: #2D353B`, `bg-surface: #343F44`, `accent-green: #A7C080`
-  - `danger-red: #E67E80`, `warning-yellow: #DBBC7F`
-  - `text-primary: #D3C6AA`, `text-muted: #9DA9A0`
-- Add the `Inter` font from Google Fonts to `index.html`.
-- Set the default background and font in `index.css`.
+**Step 3 — Backend: Analytics Routes**
+- Create `routes/manager_analytics.py` with revenue / top-items / inventory aggregation endpoints.
 
-**Step 3 — Create the Folder Structure**
-- Create `src/` sub-folders: `components/`, `pages/`, `hooks/`, `services/`, `context/`, `assets/`.
+**Step 4 — Frontend: Manager Dashboard**
+- `ManagerDashboardPage`: pending orders list with Approve / Reject buttons, 10-second polling.
 
-**Step 4 — Auth Context & Protected Routes**
-- Create `context/AuthContext.jsx` wrapping the entire app with login/logout/signup state.
-- Create `components/ProtectedRoute.jsx` and the manager-only route guard.
+**Step 5 — Frontend: Inventory & History Pages**
+- `ManagerInventoryPage`: table + CRUD modals.
+- `ManagerHistoryPage`: filterable table with expandable rows.
 
-**Step 5 — Pages & Routing**
-- Create 8 empty page components (placeholder text is fine for now).
-- Wire all routes in `App.jsx` using React Router.
-- Confirm `npm run dev` starts and navigating to each route shows the correct placeholder.
+**Step 6 — Frontend: Analytics Dashboard**
+- `ManagerAnalyticsPage`: wire all three chart components with real data from the backend.
 
-> For full task details for each step, see `About/PHASES.md` → Phase 4.
+> For full task details, see `About/PHASES.md` → Phase 5.
 
 ---
 
@@ -200,6 +220,7 @@ This table tracks every significant change made to the project — scope additio
 | July 2026 | **Phase 2 complete:** Supabase JWKS JWT verification (`middleware/auth.py`), role guard (`require_manager`), Upstash Redis rate limiter with `Retry-After` header (`middleware/rate_limit.py`), auth proxy routes (`routes/auth.py`), global 500 exception handler in `main.py` | Aditya |
 | July 2026 | **Phase 3 complete:** LangGraph StateGraph agent (4 nodes, MemorySaver, `interrupt()` HITL), all 9 tools with `with_for_update()` locking and price snapshots, system prompt encoding Rules A-1–A-7, chat routes `POST /chat/message` + `GET /chat/history` | Aditya |
 | July 2026 | **Phase 3.5 complete:** `is_daily_delight` column added to `MenuItem`; `POST /manager/menu/auto-delight` (atomic highest-stock picker); `GET /manager/insights` (GPT-4o-mini inventory briefing with graceful fallback); system prompt updated with Daily Delight greeting instruction; `routes/manager.py` mounted at `/manager` | Aditya |
+| July 2026 | **Phase 4 complete:** Vite + React 18 + TypeScript frontend initialised in `Frontend/`; Tailwind CSS with full Everforest palette; React Router 6 with all 8 routes + ProtectedRoute guards; Axios client with JWT interceptor + error code translation (RULES.md § E-5); AuthContext with localStorage session restore; HealthCheck component confirms live backend connection; all 5 shared components + 3 Recharts chart wrappers + 8 page stubs created | Aditya |
 
 ---
 

@@ -329,7 +329,7 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
-## Phase 4 — Frontend Skeleton & Routing
+## Phase 4 — Frontend Skeleton & Routing ✅
 
 **Goal:** Create the React app with Tailwind CSS and set up the basic page structure and navigation. No real data yet — just the shell that we'll fill in Phases 5 and 6.
 
@@ -337,38 +337,45 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 4.1 — React App Setup
 
-- [ ] Inside the `frontend/` folder, bootstrap a new React app (using Vite for speed):
+- [x] Inside the `Frontend/` folder, bootstrap a new React app (using Vite for speed):
   ```bash
-  npm create vite@latest . -- --template react
+  npm create vite@latest Frontend -- --template react-ts
   ```
-- [ ] Install Tailwind CSS and follow the Vite setup guide to configure it.
-- [ ] Install React Router for page navigation: `npm install react-router-dom`.
-- [ ] Install Axios for making API calls to the backend: `npm install axios`.
-- [ ] Install Recharts for the Manager Analytics charts: `npm install recharts`.
-- [ ] Delete the default Vite boilerplate (`App.css`, default content in `App.jsx`).
-- [ ] Add the Everforest dark theme color tokens to `tailwind.config.js` as custom colors:
+- [x] Install Tailwind CSS and configure it (`tailwind.config.js`, `postcss.config.js`).
+- [x] Install React Router for page navigation: `npm install react-router-dom`.
+- [x] Install Axios for making API calls to the backend: `npm install axios`.
+- [x] Install Recharts for the Manager Analytics charts: `npm install recharts`.
+- [x] Delete the default Vite boilerplate (`App.css`, default content in `App.jsx`).
+- [x] Add the Everforest dark theme color tokens to `tailwind.config.js` as custom colors:
   - `bg-base`: `#2D353B`
   - `bg-surface`: `#343F44`
+  - `bg-elevated`: `#3D484D`
+  - `bg-border`: `#475258`
   - `accent-green`: `#A7C080`
+  - `accent-teal`: `#83C092`
   - `danger-red`: `#E67E80`
   - `warning-yellow`: `#DBBC7F`
+  - `accent-blue`: `#7FBBB3`
   - `text-primary`: `#D3C6AA`
   - `text-muted`: `#9DA9A0`
-- [ ] Add the `Inter` font from Google Fonts to `index.html`.
-- [ ] Set the default background color and font in `index.css`.
+  - `text-heading`: `#E9DFC1`
+- [x] Add the `Inter` and `JetBrains Mono` fonts from Google Fonts to `index.html`.
+- [x] Set the default background color and font in `index.css`. Full `@layer components` block with shared utility classes.
 
 ---
 
 ### 4.2 — Folder Structure
 
-- [ ] Organize `frontend/src/` into the following sub-folders:
+- [x] Organize `Frontend/src/` into the following sub-folders:
   ```
   src/
+  ├── api/            ← Axios client and typed API wrappers
   ├── components/     ← Reusable UI pieces (buttons, cards, input fields)
+  │   └── charts/     ← Recharts wrapper components
+  ├── context/        ← Global state (AuthContext)
   ├── pages/          ← Full page components (one per route)
-  ├── hooks/          ← Custom React hooks (e.g., useAuth, useChat)
-  ├── services/       ← Axios API call functions
-  ├── context/        ← Global state (auth context, user context)
+  ├── hooks/          ← Custom React hooks (future phases)
+  ├── services/       ← Axios API call functions (future phases)
   └── assets/         ← Images, icons
   ```
 
@@ -376,34 +383,38 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 4.3 — Auth Context
 
-- [ ] Install the Supabase JavaScript client: `npm install @supabase/supabase-js`.
-- [ ] Create `context/AuthContext.jsx` — a React context that:
+- [x] Install the Supabase JavaScript client: `npm install @supabase/supabase-js`.
+- [x] Create `context/AuthContext.tsx` — a React context that:
   - Holds the logged-in user's data and JWT token.
+  - Restores session from localStorage on mount (no login-flash on reload).
   - Provides `login()`, `logout()`, and `signup()` functions that call the backend `/auth/` routes.
+  - Listens for `canopy:session-expired` event to clear state on Axios 401.
   - Wraps the entire app so any component can access the current user.
-- [ ] Create a protected route wrapper component (`components/ProtectedRoute.jsx`) that redirects unauthenticated users to the login page.
-- [ ] Create a manager route wrapper that redirects non-managers to the customer home page.
+- [x] Create a protected route wrapper component (`components/ProtectedRoute.tsx`) that:
+  - Shows nothing while auth state is loading.
+  - Redirects unauthenticated users to the login page.
+  - Redirects wrong-role users to their correct home page.
 
 ---
 
 ### 4.4 — Pages & Routing
 
-- [ ] Create the following empty page components (placeholder text is fine for now):
-  - `pages/LoginPage.jsx` — the login/signup form
-  - `pages/CustomerChatPage.jsx` — the main customer chat interface
-  - `pages/OrderStatusPage.jsx` — shows the live status of the customer's current order
-  - `pages/RewardsPage.jsx` — shows the customer's point balance and history
-  - `pages/ManagerDashboardPage.jsx` — the manager's pending orders queue
-  - `pages/ManagerInventoryPage.jsx` — the manager's menu management interface
-  - `pages/ManagerHistoryPage.jsx` — the manager's past orders log
-  - `pages/ManagerAnalyticsPage.jsx` — the manager's charts and data visualization dashboard
+- [x] Create the following page components (Phase 4 placeholders):
+  - `pages/LoginPage.tsx` — the login/signup form
+  - `pages/CustomerChatPage.tsx` — the main customer chat interface
+  - `pages/OrderStatusPage.tsx` — shows the live status of the customer's current order
+  - `pages/RewardsPage.tsx` — shows the customer's point balance and history
+  - `pages/ManagerDashboardPage.tsx` — the manager's pending orders queue
+  - `pages/ManagerInventoryPage.tsx` — the manager's menu management interface
+  - `pages/ManagerHistoryPage.tsx` — the manager's past orders log
+  - `pages/ManagerAnalyticsPage.tsx` — the manager's charts and data visualization dashboard
 
-- [ ] Wire up all routes in `App.jsx` using React Router:
+- [x] Wire up all routes in `App.tsx` using React Router:
   ```
   /                    → LoginPage
-  /chat                → CustomerChatPage       (protected: customer)
-  /order-status        → OrderStatusPage        (protected: customer)
-  /rewards             → RewardsPage            (protected: customer)
+  /chat                → CustomerChatPage       (protected: any user)
+  /order-status        → OrderStatusPage        (protected: any user)
+  /rewards             → RewardsPage            (protected: any user)
   /manager             → ManagerDashboardPage   (protected: manager)
   /manager/inventory   → ManagerInventoryPage   (protected: manager)
   /manager/history     → ManagerHistoryPage     (protected: manager)
@@ -414,23 +425,35 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ### 4.5 — Shared Components
 
-- [ ] Build these small, reusable components that will be used across many pages:
-  - `components/Button.jsx` — a styled button with variants (primary/green, danger/red, ghost)
-  - `components/StatusBadge.jsx` — a colored pill showing order status (Pending = yellow, Approved = green, Rejected = red, Cancelled = grey)
-  - `components/Navbar.jsx` — a simple top navigation bar showing the current user's name and a logout button
-  - `components/LoadingSpinner.jsx` — a simple animated spinner for loading states
-  - `components/charts/RevenueLineChart.jsx` — a Recharts `LineChart` wrapper component (empty for now; receives data as a prop and renders the chart). Styling with Everforest accent green for the line color.
-  - `components/charts/TopItemsPieChart.jsx` — a Recharts `PieChart` wrapper component (empty for now; receives data as a prop).
-  - `components/charts/InventoryBarChart.jsx` — a Recharts `BarChart` wrapper component (empty for now; receives data as a prop). Low-stock bars will be rendered in warning yellow.
+- [x] Build these small, reusable components:
+  - `components/HealthCheck.tsx` — pings `GET /health`, shows live backend status (Phase 4 dev tool)
+  - `components/LoadingSpinner.tsx` — three-dot bounce animation (sm/md/lg sizes)
+  - `components/StatusBadge.tsx` — typed to backend `OrderStatus` enum, five colour variants
+  - `components/Navbar.tsx` — sticky header with user email, role badge, sign-out
+  - `components/ProtectedRoute.tsx` — auth + role guard wrapper
+  - `components/charts/RevenueLineChart.tsx` — Recharts `LineChart` with accent-green line
+  - `components/charts/TopItemsPieChart.tsx` — Recharts `PieChart` with Everforest colour cycling
+  - `components/charts/InventoryBarChart.tsx` — Recharts `BarChart` with per-bar `is_low_stock` colour
+
+---
+
+### 4.6 — Axios API Client
+
+- [x] Create `src/api/client.ts`:
+  - Single Axios instance pointing at `/api` (Vite proxy → `http://localhost:8000`).
+  - Request interceptor reads `canopy_jwt` from localStorage and attaches `Authorization: Bearer`.
+  - Response interceptor translates all 9 backend error codes to user-friendly messages (RULES.md § E-5).
+  - Dispatches `canopy:session-expired` event on 401 for AuthContext to handle.
+  - Typed `api.get/post/put/patch/delete` wrappers for clean component code.
 
 ---
 
 ### ✅ Phase 4 Done When:
 - The React app starts with `npm run dev`.
 - Navigating to each route shows the correct placeholder page.
-- Logging in redirects to the right page based on role.
-- Logging out clears the session and returns to the login page.
-- Recharts is installed and the three chart wrapper components exist (even if they show no data yet).
+- The HealthCheck widget shows `status: ok` from the live FastAPI backend.
+- Recharts is installed and the three chart wrapper components exist.
+- ProtectedRoute correctly guards manager routes.
 
 ---
 
@@ -732,11 +755,11 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 | **Phase 2** ✅ | Authentication & Security | Supabase auth working, role guards enforced, rate limiter active |
 | **Phase 3** ✅ | The AI Brain | GPT-4o-mini agent responding with real menu data, all 9 tools working |
 | **Phase 3.5** ✅ | Daily Delights & AI Insights | Daily Delight flag + auto-assign route; AI inventory briefing for managers |
-| **Phase 4** | Frontend Skeleton | React app with routing, Everforest theme, auth flow, placeholder pages |
+| **Phase 4** ✅ | Frontend Skeleton | React/Vite/TS app, Everforest Tailwind, all 8 routes, Axios client + auth guards |
 | **Phase 5** | Manager Experience | Full dashboard: approve/reject orders, manage inventory & stock |
 | **Phase 6** | Customer Experience | Chat UI, order status, rewards, modification with stock restoration |
 | **Phase 7** | Polish & Deployment | End-to-end tested, UI polished, README written, portfolio ready |
 
 ---
 
-*End of PHASES.md v1.2 — Updated July 2026: Phase 3.5 (Daily Delights & AI Insights) marked complete.*
+*End of PHASES.md v1.3 — Updated July 2026: Phase 4 (Frontend Skeleton & Routing) marked complete.*
