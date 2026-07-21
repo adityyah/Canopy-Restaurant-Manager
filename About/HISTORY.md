@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** Active — Phase 4 Complete → Phase 5 Starting
+**Status:** Active — Phase 5 Complete → Phase 6 Starting (Manager Dashboard)
 
 ---
 
@@ -71,12 +71,12 @@ The defining feature is the **Human-in-the-Loop (HITL)** pattern: no order ever 
 [x] Phase 3 — The AI Brain
 [x] Phase 3.5 — Daily Delights & AI Insights (Backend Expansion)
 [x] Phase 4 — Frontend Skeleton & Routing
-[ ] Phase 5 — The Manager Experience
-[ ] Phase 6 — The Customer Experience
+[x] Phase 5 — Customer Terminal & AI Chat UI
+[ ] Phase 6 — The Manager Dashboard
 [ ] Phase 7 — Polish & Deployment
 ```
 
-**As of this writing:** The React/Vite frontend skeleton is fully initialised and wired to the FastAPI backend. Tailwind CSS is configured with the complete Everforest dark palette. React Router is set up with all 8 routes and role-based ProtectedRoute guards. The Axios API client attaches JWTs automatically and translates all backend error codes to user-friendly messages. The HealthCheck component visually confirms the frontend→backend connection is live. Phase 5 (Manager Experience) begins next.
+**As of this writing:** The Customer Terminal is fully built. Customers land on a premium Everforest-themed page with a Playfair Display hero, a menu grid with category tabs and daily delight ribbons, and a sticky AI chat panel. The chat sends messages to the LangGraph backend via POST /chat/message, renders HITL approval banners when the agent is interrupted, handles rate-limit countdowns, and injects menu card selections directly into the chat input. Phase 6 (Manager Dashboard) begins next.
 
 ---
 
@@ -176,31 +176,65 @@ The entire Python/FastAPI backend is built and operational across three complete
 **Chart Components:** `RevenueLineChart`, `TopItemsPieChart`, `InventoryBarChart` (all fully styled).
 **8 Page Stubs:** All named and routing correctly.
 
+### Milestone 2.1 — Phase 5: Customer Terminal & AI Chat UI ✅
+
+**Typography update:**
+- `index.html`: Added Playfair Display 600/700 to Google Fonts import alongside Inter and JetBrains Mono (DESIGN.md § 3.1).
+- `tailwind.config.js`: Added `font-display` family token (`['Playfair Display', 'Georgia', 'serif']`).
+- `index.css`: Explicit `h1, .display-heading { font-family: Playfair Display }` rule per DESIGN.md § 3.1.
+
+**`components/customer/ChatInterface.tsx` (new):**
+- Manages full message history in local state (user + assistant turns).
+- Sends `POST /chat/message` via the Axios client; renders optimistic user bubble immediately.
+- Customer bubbles: right-aligned, `rgba(167,192,128,0.13)` faint green tint, `border-radius: 16px 16px 4px 16px`.
+- AI bubbles: left-aligned, `bg-surface` background, `border-radius: 16px 16px 16px 4px`.
+- Three-dot `LoadingSpinner` typing indicator while awaiting AI response.
+- **HITL interrupt banner:** When the backend returns `interrupted: true`, renders an inline `ApprovalBanner` directly below the triggering AI message, using warning-yellow palette.
+- **Rate-limit countdown:** On 429, reads `Retry-After` header and shows a live countdown banner; restores the user's unsent message.
+- Auto-scrolls to the latest message on every update.
+- `injectedMessage` prop: pre-fills the textarea when the user clicks a menu card.
+- Textarea: Enter to send, Shift+Enter for newline.
+
+**`components/customer/MenuDisplay.tsx` (new):**
+- Fetches `GET /menu` on mount, shows 6 skeleton cards while loading.
+- Category filter tabs (All / Starters / Mains / Desserts / Beverages) derived from live data.
+- Daily Delight ribbon: `★ TODAY'S DELIGHT` badge on the card's top-right corner.
+- Dietary badges: Vegan (accent-green), Veg (accent-teal), Spicy 🌶 (danger-red).
+- Low-stock warning (< 5 units): warning-yellow left border accent + "Only X left" text.
+- Out-of-stock cards: 55% opacity, "Out of stock" label instead of Add button.
+- `onAddToOrder` prop: passes `"I would like to order one [Name]"` string up to parent.
+- Sorts items: Daily Delight first, then alphabetical.
+
+**`pages/CustomerTerminal.tsx` (new):**
+- Full-page layout composing Navbar + Hero + MenuDisplay + ChatInterface.
+- Hero section: radial gradient background, Playfair Display `h1` with italic `Great Mood.`, feature pills.
+- Desktop: 60% menu (scrollable) / 40% chat (sticky `top-6`, fixed viewport height).
+- Mobile: chat on top (full-width, above fold), menu below.
+- `injectedMessage` state bridges MenuDisplay `onAddToOrder` → ChatInterface prop.
+- `App.tsx` `/chat` route updated to render `CustomerTerminal`.
+
 ---
 
 ## 4. Next Immediate Steps
 
 **Step 1 — Backend: Order Management Routes**
-- Create `routes/manager_orders.py` with `GET /manager/orders/pending`, `GET /manager/orders`, `POST /manager/orders/{id}/approve`, `POST /manager/orders/{id}/reject`.
-- All routes protected by `require_manager`.
+- Create `routes/manager_orders.py` with `GET /manager/orders/pending`, `GET /manager/orders`, `POST /manager/orders/{id}/approve` (with reward points calc), `POST /manager/orders/{id}/reject` (with optional reason).
+- All routes protected by `require_manager`. Approve: atomic status + reward insert in one transaction (RULES.md § D-4).
 
 **Step 2 — Backend: Menu & Inventory Routes**
-- Create `routes/manager_menu.py` with full CRUD + stock patch + toggle + soft-delete.
+- Create `routes/manager_menu.py` with full CRUD: `GET`, `POST`, `PUT`, `PATCH /stock`, `PATCH /toggle`, `DELETE` (soft-delete per RULES.md § D-6).
 
 **Step 3 — Backend: Analytics Routes**
-- Create `routes/manager_analytics.py` with revenue / top-items / inventory aggregation endpoints.
+- Create `routes/manager_analytics.py`: revenue by day (last 30/7/90d), top-items, inventory snapshot.
+- All aggregation server-side (RULES.md § D-7). Never send raw order dumps to the frontend.
 
 **Step 4 — Frontend: Manager Dashboard**
-- `ManagerDashboardPage`: pending orders list with Approve / Reject buttons, 10-second polling.
+- `ManagerDashboardPage`: 10-second polling of pending orders, Approve/Reject card actions.
+- `ManagerInventoryPage`: sortable table with inline stock edit, toggle switch, CRUD modals.
+- `ManagerHistoryPage`: filterable all-orders table with expandable rows.
+- `ManagerAnalyticsPage`: all three Recharts charts wired to live data with period toggle.
 
-**Step 5 — Frontend: Inventory & History Pages**
-- `ManagerInventoryPage`: table + CRUD modals.
-- `ManagerHistoryPage`: filterable table with expandable rows.
-
-**Step 6 — Frontend: Analytics Dashboard**
-- `ManagerAnalyticsPage`: wire all three chart components with real data from the backend.
-
-> For full task details, see `About/PHASES.md` → Phase 5.
+> For full task details, see `About/PHASES.md` → Phase 6.
 
 ---
 
@@ -221,6 +255,7 @@ This table tracks every significant change made to the project — scope additio
 | July 2026 | **Phase 3 complete:** LangGraph StateGraph agent (4 nodes, MemorySaver, `interrupt()` HITL), all 9 tools with `with_for_update()` locking and price snapshots, system prompt encoding Rules A-1–A-7, chat routes `POST /chat/message` + `GET /chat/history` | Aditya |
 | July 2026 | **Phase 3.5 complete:** `is_daily_delight` column added to `MenuItem`; `POST /manager/menu/auto-delight` (atomic highest-stock picker); `GET /manager/insights` (GPT-4o-mini inventory briefing with graceful fallback); system prompt updated with Daily Delight greeting instruction; `routes/manager.py` mounted at `/manager` | Aditya |
 | July 2026 | **Phase 4 complete:** Vite + React 18 + TypeScript frontend initialised in `Frontend/`; Tailwind CSS with full Everforest palette; React Router 6 with all 8 routes + ProtectedRoute guards; Axios client with JWT interceptor + error code translation (RULES.md § E-5); AuthContext with localStorage session restore; HealthCheck component confirms live backend connection; all 5 shared components + 3 Recharts chart wrappers + 8 page stubs created | Aditya |
+| July 2026 | **Phase 5 complete:** Customer Terminal fully built. `ChatInterface.tsx` — message history, HITL interrupt banner (warning-yellow), rate-limit countdown, injectedMessage prop, typing indicator. `MenuDisplay.tsx` — category tabs, Daily Delight ribbon, dietary badges, low-stock warning, skeleton loaders. `CustomerTerminal.tsx` — Playfair Display hero, 60/40 responsive layout, sticky chat panel. Playfair Display added to fonts and Tailwind config. | Aditya |
 
 ---
 

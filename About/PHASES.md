@@ -457,7 +457,72 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
-## Phase 5 — The Manager Experience
+## Phase 5 — Customer Terminal & AI Chat UI ✅
+
+**Goal:** Build the full customer-facing ordering experience. A customer can browse the menu, click to add items, chat with the AI to build and confirm their order, and see the HITL approval banner when their order is queued for the manager.
+
+---
+
+### 5.1 — Typography & Design System Update
+
+- [x] Add **Playfair Display** 600/700 to Google Fonts import in `index.html` (alongside Inter + JetBrains Mono).
+- [x] Add `font-display: ['Playfair Display', 'Georgia', 'serif']` to `tailwind.config.js` fontFamily.
+- [x] Add `h1, .display-heading { font-family: Playfair Display }` rule to `index.css` `@layer base`.
+
+---
+
+### 5.2 — ChatInterface Component
+
+- [x] Create `components/customer/ChatInterface.tsx`:
+  - Manages `messages: Message[]` state (user + assistant turns + timestamps).
+  - Sends `POST /chat/message` via Axios client on submit; appends user bubble optimistically.
+  - **Customer bubbles:** right-aligned, `rgba(167,192,128,0.13)` faint green tint, `border-radius: 16px 16px 4px 16px` (DESIGN.md § 4.6).
+  - **AI bubbles:** left-aligned, `bg-surface` background, `border-radius: 16px 16px 16px 4px`.
+  - Three-dot `LoadingSpinner` typing indicator while awaiting AI response.
+  - **HITL interrupt banner (`ApprovalBanner`):** When backend returns `interrupted: true`, renders an inline warning-yellow banner directly below the triggering AI message: *"⏳ Awaiting Manager Approval"*.
+  - **Rate-limit handling:** On 429, reads `Retry-After` header, shows live countdown banner, restores unsent message.
+  - Auto-scrolls to latest message with `scrollIntoView`.
+  - `injectedMessage` prop: pre-fills textarea when user clicks a menu card.
+  - Textarea: Enter to send, Shift+Enter for newline.
+
+---
+
+### 5.3 — MenuDisplay Component
+
+- [x] Create `components/customer/MenuDisplay.tsx`:
+  - Fetches `GET /menu` on mount; shows 6 skeleton cards while loading.
+  - **Category tabs:** All / Starters / Mains / Desserts / Beverages — derived from live data.
+  - **Daily Delight ribbon:** `★ TODAY'S DELIGHT` on the top-right corner of the card.
+  - **Dietary badges:** Vegan (accent-green), Veg (accent-teal), Spicy 🌶 (danger-red).
+  - **Low-stock warning** (< 5 units): warning-yellow left border accent + "Only X left" text.
+  - **Out-of-stock cards:** 55% opacity, "Out of stock" label in place of Add button.
+  - `onAddToOrder(message)` prop: passes `"I would like to order one [Name]"` up to parent.
+  - Sort order: Daily Delight first, then alphabetical.
+
+---
+
+### 5.4 — CustomerTerminal Page
+
+- [x] Create `pages/CustomerTerminal.tsx`:
+  - **Hero section:** Radial-gradient background, Playfair Display `h1` ("Good Food, *Great Mood.*"), personalised greeting, feature pills (AI-Powered, Manager-Approved, Earn Points).
+  - **Responsive layout:**
+    - Desktop (`lg+`): MenuDisplay 60% (left, scrollable) + ChatInterface 40% (right, sticky `top-6`, fixed viewport height).
+    - Mobile: ChatInterface full-width on top (primary CTA above fold), MenuDisplay below.
+  - `injectedMessage` state lifts menu card selections into the chat input.
+  - `App.tsx` `/chat` route updated to render `CustomerTerminal` (replacing the stub).
+
+---
+
+### ✅ Phase 5 Done When:
+- Customer sees the hero, menu grid, and chat panel on `/chat`.
+- Clicking a menu card pre-fills the chat input with a natural-language message.
+- Sending a message shows the AI response with proper bubble styling.
+- When the AI submits an order (HITL interrupt), the approval banner appears in the chat.
+- Rate-limit banner shows a countdown and restores the user's message.
+
+---
+
+## Phase 6 — The Manager Dashboard
 
 **Goal:** Build everything the manager sees and interacts with. By the end of this phase, a manager can log in, review orders, approve or reject them, and fully manage the restaurant's menu and inventory — all from the dashboard.
 
@@ -756,10 +821,10 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 | **Phase 3** ✅ | The AI Brain | GPT-4o-mini agent responding with real menu data, all 9 tools working |
 | **Phase 3.5** ✅ | Daily Delights & AI Insights | Daily Delight flag + auto-assign route; AI inventory briefing for managers |
 | **Phase 4** ✅ | Frontend Skeleton | React/Vite/TS app, Everforest Tailwind, all 8 routes, Axios client + auth guards |
-| **Phase 5** | Manager Experience | Full dashboard: approve/reject orders, manage inventory & stock |
-| **Phase 6** | Customer Experience | Chat UI, order status, rewards, modification with stock restoration |
+| **Phase 5** ✅ | Customer Terminal & AI Chat | Playfair Display hero, menu grid, sticky chat, HITL banner, rate-limit countdown |
+| **Phase 6** | Manager Dashboard | Approve/reject orders, CRUD inventory, Recharts analytics — all wired live |
 | **Phase 7** | Polish & Deployment | End-to-end tested, UI polished, README written, portfolio ready |
 
 ---
 
-*End of PHASES.md v1.3 — Updated July 2026: Phase 4 (Frontend Skeleton & Routing) marked complete.*
+*End of PHASES.md v1.4 — Updated July 2026: Phase 5 (Customer Terminal & AI Chat UI) marked complete.*
