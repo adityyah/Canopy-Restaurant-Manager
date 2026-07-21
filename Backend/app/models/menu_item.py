@@ -54,6 +54,12 @@ class MenuItem(Base):
 
     When `stock_quantity` hits 0, the service layer sets `is_active = False`
     so the AI stops recommending the item (RULES.md § A-2 and § D-1).
+
+    `is_daily_delight` marks exactly one item as the featured special of the day.
+    The AI greets customers by warmly recommending this item.  Set automatically
+    via POST /manager/menu/auto-delight (picks the highest-stock item) or manually
+    by a manager.  At most one row should have this flag set to True at a time —
+    enforced by the auto-delight route, which resets all others to False.
     """
 
     __tablename__ = "menu_items"
@@ -148,6 +154,20 @@ class MenuItem(Base):
         comment="False = hidden from AI and customers (soft delete or out-of-stock)",
     )
 
+    # Phase 3.5 — Daily Delight flag.
+    # Exactly one item should have this True at any time.  The auto-delight
+    # route (POST /manager/menu/auto-delight) enforces this by resetting all
+    # other items to False before setting the winner to True.
+    # The AI system prompt is instructed to call get_menu_items and warm-recommend
+    # the item where is_daily_delight = True in the opening greeting.
+    is_daily_delight: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        index=True,
+        comment="True = this item is today's featured Daily Delight; at most one row at a time",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -183,5 +203,6 @@ class MenuItem(Base):
         return (
             f"<MenuItem id={self.id} name={self.name!r} "
             f"category={self.category!r} price={self.price} "
-            f"stock={self.stock_quantity} active={self.is_active}>"
+            f"stock={self.stock_quantity} active={self.is_active} "
+            f"delight={self.is_daily_delight}>"
         )
