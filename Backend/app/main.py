@@ -175,6 +175,11 @@ from app.routes import chat as chat_routes  # noqa: E402
 
 app.include_router(chat_routes.router, prefix="/chat", tags=["Chat"])
 
+# ── Phase 3.5 (ACTIVE) ──────────────────────────────────────────────────────
+from app.routes import manager as manager_routes  # noqa: E402
+
+app.include_router(manager_routes.router, prefix="/manager", tags=["Manager"])
+
 # ── Phase 5 (pending) ───────────────────────────────────────────────────────
 # from app.routes import manager_orders, manager_menu, manager_analytics
 # app.include_router(manager_orders.router, prefix="/manager/orders", tags=["Manager — Orders"])
