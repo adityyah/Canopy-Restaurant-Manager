@@ -52,8 +52,14 @@
     border-radius: 3px;
   }
 
-  /* Headings default to text-heading (slightly brighter than body text) */
-  h1, h2, h3, h4, h5, h6 {
+  /* h1 and .display-heading use Playfair Display — DESIGN.md § 3.1
+     "Used sparingly — only for app name/logo, major page titles (H1),
+      and the chat greeting message." */
+  h1, .display-heading {
+    @apply font-display text-text-heading;
+    line-height: 1.25;
+  }
+  h2, h3, h4, h5, h6 {
     @apply text-text-heading font-semibold;
   }
 

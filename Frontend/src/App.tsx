@@ -2,118 +2,66 @@
 // =============================================================================
 // App — Root Component with React Router
 // =============================================================================
-// Sets up:
-//   • AuthProvider — wraps the entire tree with authentication state
-//   • BrowserRouter — enables client-side routing
-//   • All 8 page routes from PHASES.md § 4.4
-//   • ProtectedRoute guards for customer and manager routes
-//   • HealthCheck panel (Phase 4 dev tool — rendered in a corner overlay)
+// ── DEVELOPMENT NOTE (Phase 5 preview) ──────────────────────────────────────
+// The LoginPage / Auth flow is built in Phase 6. For now, CustomerTerminal
+// is mounted directly at "/" so we can interact with the full UI immediately.
 //
-// Route Map (PHASES.md § 4.4):
-//   /                    → LoginPage
-//   /chat                → CustomerChatPage       (requires: any logged-in user)
-//   /order-status        → OrderStatusPage        (requires: any logged-in user)
-//   /rewards             → RewardsPage            (requires: any logged-in user)
-//   /manager             → ManagerDashboardPage   (requires: role=manager)
-//   /manager/inventory   → ManagerInventoryPage   (requires: role=manager)
-//   /manager/history     → ManagerHistoryPage     (requires: role=manager)
-//   /manager/analytics   → ManagerAnalyticsPage   (requires: role=manager)
+// Current route map (dev preview):
+//   /                    → CustomerTerminal        ← ACTIVE — no auth gate
+//   /login               → LoginPage              ← future home of auth
+//   /order-status        → OrderStatusPage        (stub)
+//   /rewards             → RewardsPage            (stub)
+//   /manager             → ManagerDashboardPage   (stub)
+//   /manager/inventory   → ManagerInventoryPage   (stub)
+//   /manager/history     → ManagerHistoryPage     (stub)
+//   /manager/analytics   → ManagerAnalyticsPage   (stub)
+//
+// When Phase 6 (auth) lands, swap the "/" route back to <LoginPage /> and
+// restore ProtectedRoute guards on /chat, /order-status, and /rewards.
 // =============================================================================
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
-import ProtectedRoute from '@/components/ProtectedRoute'
 import HealthCheck from '@/components/HealthCheck'
 
 // Pages
-import LoginPage              from '@/pages/LoginPage'
-import CustomerChatPage       from '@/pages/CustomerChatPage'
-import OrderStatusPage        from '@/pages/OrderStatusPage'
-import RewardsPage            from '@/pages/RewardsPage'
-import ManagerDashboardPage   from '@/pages/ManagerDashboardPage'
-import ManagerInventoryPage   from '@/pages/ManagerInventoryPage'
-import ManagerHistoryPage     from '@/pages/ManagerHistoryPage'
-import ManagerAnalyticsPage   from '@/pages/ManagerAnalyticsPage'
+import CustomerTerminal     from '@/pages/CustomerTerminal'
+import LoginPage            from '@/pages/LoginPage'
+import OrderStatusPage      from '@/pages/OrderStatusPage'
+import RewardsPage          from '@/pages/RewardsPage'
+import ManagerDashboardPage from '@/pages/ManagerDashboardPage'
+import ManagerInventoryPage from '@/pages/ManagerInventoryPage'
+import ManagerHistoryPage   from '@/pages/ManagerHistoryPage'
+import ManagerAnalyticsPage from '@/pages/ManagerAnalyticsPage'
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ── Public ──────────────────────────────────────────────────── */}
-          <Route path="/" element={<LoginPage />} />
+          {/* ── Phase 5 Preview: CustomerTerminal at root ──────────────── */}
+          {/* Swap back to <LoginPage /> when Phase 6 auth is complete.     */}
+          <Route path="/"             element={<CustomerTerminal />} />
+          <Route path="/login"        element={<LoginPage />} />
 
-          {/* ── Customer Routes (any authenticated user) ─────────────────── */}
-          <Route
-            path="/chat"
-            element={
-              <ProtectedRoute>
-                <CustomerChatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/order-status"
-            element={
-              <ProtectedRoute>
-                <OrderStatusPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/rewards"
-            element={
-              <ProtectedRoute>
-                <RewardsPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* ── Customer routes (stubs — will get ProtectedRoute in P6) ── */}
+          <Route path="/chat"         element={<CustomerTerminal />} />
+          <Route path="/order-status" element={<OrderStatusPage />} />
+          <Route path="/rewards"      element={<RewardsPage />} />
 
-          {/* ── Manager Routes (role=manager only) ───────────────────────── */}
-          <Route
-            path="/manager"
-            element={
-              <ProtectedRoute requiredRole="manager">
-                <ManagerDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/manager/inventory"
-            element={
-              <ProtectedRoute requiredRole="manager">
-                <ManagerInventoryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/manager/history"
-            element={
-              <ProtectedRoute requiredRole="manager">
-                <ManagerHistoryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/manager/analytics"
-            element={
-              <ProtectedRoute requiredRole="manager">
-                <ManagerAnalyticsPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ── Catch-all — redirect unknown paths to home ───────────────── */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ── Manager routes (stubs — will get ProtectedRoute in P6) ── */}
+          <Route path="/manager"            element={<ManagerDashboardPage />} />
+          <Route path="/manager/inventory"  element={<ManagerInventoryPage />} />
+          <Route path="/manager/history"    element={<ManagerHistoryPage />} />
+          <Route path="/manager/analytics"  element={<ManagerAnalyticsPage />} />
         </Routes>
 
-        {/* ── Phase 4 Dev Tool: HealthCheck overlay ───────────────────────
-            Displays the backend connection status in the bottom-right corner.
-            Remove this block (or set VITE_SHOW_HEALTH_CHECK=false) once
-            Phase 4 is confirmed complete and the backend is stable.
-        ─────────────────────────────────────────────────────────────────── */}
+        {/* ── HealthCheck — small floating widget (dev only) ──────────────
+            Sits in the bottom-right corner at z-50, completely unobtrusive.
+            Only renders when Vite's DEV mode is active (not in prod builds).
+        ──────────────────────────────────────────────────────────────────── */}
         {import.meta.env.DEV && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed bottom-4 right-4 z-50 w-64">
             <HealthCheck />
           </div>
         )}

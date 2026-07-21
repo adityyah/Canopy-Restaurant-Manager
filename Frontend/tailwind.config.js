@@ -43,8 +43,9 @@ export default {
       // ── Typography ─────────────────────────────────────────────────────
       // Inter is loaded via Google Fonts in index.html.
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+        sans:    ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Playfair Display', 'Georgia', 'serif'],  // DESIGN.md § 3.1 — headings only
+        mono:    ['JetBrains Mono', 'Menlo', 'monospace'],
       },
 
       // ── Spacing ────────────────────────────────────────────────────────
