@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** Active — Phases 1, 2 & 3 Complete → Phase 4 Starting
+**Status:** Active — Phases 1, 2, 3 & 3.5 Complete → Phase 4 Starting
 
 ---
 
@@ -69,13 +69,14 @@ The defining feature is the **Human-in-the-Loop (HITL)** pattern: no order ever 
 [x] Phase 1 — Foundation & Database
 [x] Phase 2 — Authentication & Security
 [x] Phase 3 — The AI Brain
+[x] Phase 3.5 — Daily Delights & AI Insights (Backend Expansion)
 [ ] Phase 4 — Frontend Skeleton & Routing
 [ ] Phase 5 — The Manager Experience
 [ ] Phase 6 — The Customer Experience
 [ ] Phase 7 — Polish & Deployment
 ```
 
-**As of this writing:** The entire FastAPI backend is fully operational. The SQLite database is seeded and running. Supabase JWT authentication and Upstash Redis rate limiting are implemented and wired up. The LangGraph AI agent (GPT-4o-mini) is live with all 9 tools and the full HITL interrupt flow. The project is now ready to begin Phase 4 — the React frontend.
+**As of this writing:** The full FastAPI backend is complete and expanded. Two new Phase 3.5 features are live: (1) Daily Delight — the highest-stock item is flagged as the day's special and recommended by the AI in its greeting; (2) AI Insights — the manager can request a GPT-4o-mini-generated 2-sentence inventory and demand briefing. The project is ready to begin Phase 4 — the React frontend.
 
 ---
 
@@ -130,6 +131,22 @@ The entire Python/FastAPI backend is built and operational across three complete
 - `agents/agent.py`: LangGraph StateGraph with 4 nodes (`agent_node`, `tool_node`, `manager_review_node`, routing edges). MemorySaver checkpointing with `thread_id = customer_id`. `interrupt()` in `manager_review_node` implements the HITL pause. `run_agent()` and `get_conversation_history()` are the public API.
 - `routes/chat.py`: `POST /chat/message` (rate-limited + JWT-protected), `GET /chat/history`.
 
+### Milestone 1.1 — Phase 3.5: Daily Delights & AI Insights ✅
+
+**Daily Delight feature:**
+- Added `is_daily_delight` boolean column to `MenuItem` model (default `False`, indexed).
+- Seed script updated: `Fresh Lime Soda` (stock=100, highest active item) seeded as the default Daily Delight.
+- `POST /manager/menu/auto-delight`: atomic bulk-reset + single-item assignment in one transaction. Always picks the active item with the highest `stock_quantity`. Returns the chosen item with a confirmation message.
+- System prompt updated: AI is instructed to call `get_menu_items()` at the start of every conversation, identify the Daily Delight item, and include a warm recommendation in the opening greeting.
+
+**AI Insights feature:**
+- `GET /manager/insights`: gathers two DB facts (items with `stock_quantity < 5`, count of `PENDING_APPROVAL` orders) and passes them to GPT-4o-mini via a tightly constrained prompt. Returns a 2-sentence managerial advisory *plus* the raw structured data so the frontend can render both.
+- Graceful degradation: if the OpenAI call fails, a structured fallback message is returned (no 500 error).
+
+**Infrastructure:**
+- `app/routes/manager.py` created as the Phase 3.5 manager utility router.
+- Mounted at `/manager` prefix in `main.py` (Phase 3.5 section, separate from the Phase 5 manager routes planned later).
+
 ---
 
 ## 4. Next Immediate Steps
@@ -182,6 +199,7 @@ This table tracks every significant change made to the project — scope additio
 | July 2026 | **Phase 1 complete:** FastAPI server, SQLAlchemy engine (WAL + FK pragmas), all 6 ORM models with constraints, seed.py (16 items / 4 categories). Backend directory: `Backend/app/` | Aditya |
 | July 2026 | **Phase 2 complete:** Supabase JWKS JWT verification (`middleware/auth.py`), role guard (`require_manager`), Upstash Redis rate limiter with `Retry-After` header (`middleware/rate_limit.py`), auth proxy routes (`routes/auth.py`), global 500 exception handler in `main.py` | Aditya |
 | July 2026 | **Phase 3 complete:** LangGraph StateGraph agent (4 nodes, MemorySaver, `interrupt()` HITL), all 9 tools with `with_for_update()` locking and price snapshots, system prompt encoding Rules A-1–A-7, chat routes `POST /chat/message` + `GET /chat/history` | Aditya |
+| July 2026 | **Phase 3.5 complete:** `is_daily_delight` column added to `MenuItem`; `POST /manager/menu/auto-delight` (atomic highest-stock picker); `GET /manager/insights` (GPT-4o-mini inventory briefing with graceful fallback); system prompt updated with Daily Delight greeting instruction; `routes/manager.py` mounted at `/manager` | Aditya |
 
 ---
 

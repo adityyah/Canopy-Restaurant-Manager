@@ -272,6 +272,63 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
+## Phase 3.5 — Daily Delights & AI Insights ✅
+
+**Goal:** Expand the backend with two unique features before building the frontend: (1) a Daily Delight system where the AI proactively recommends a featured item in every greeting, and (2) an AI Insights endpoint that gives managers a GPT-generated inventory briefing.
+
+---
+
+### 3.5.1 — Daily Delight Column
+
+- [x] Add `is_daily_delight` boolean column to `models/menu_item.py`.
+  - Default: `False`. Indexed. At most one row should be `True` at any time.
+- [x] Update `seed.py` to mark exactly one item (`Fresh Lime Soda`, highest stock = 100) as `is_daily_delight = True`.
+- [x] Add `is_daily_delight` flag to the printed seed summary table.
+
+---
+
+### 3.5.2 — Manager Routes
+
+- [x] Create `routes/manager.py` with the `require_manager` dependency applied to all routes.
+
+- [x] **`POST /manager/menu/auto-delight`**:
+  - Queries all active items ordered by `stock_quantity DESC`.
+  - In a single atomic transaction: resets all items to `is_daily_delight=False`, then sets the top item to `True`.
+  - Returns the chosen item with a confirmation message.
+
+- [x] **`GET /manager/insights`**:
+  - Queries items with `stock_quantity < 5` (critical low stock).
+  - Queries count of orders in `PENDING_APPROVAL` status.
+  - Queries order count in the last 24 hours for demand context.
+  - Passes this raw data to GPT-4o-mini with a 2-sentence constraint prompt.
+  - Returns `{"summary": str, "low_stock_items": [...], "pending_order_count": int}`.
+  - Gracefully degrades to a fallback message if the OpenAI call fails.
+
+---
+
+### 3.5.3 — System Prompt Update
+
+- [x] Add `DAILY DELIGHT — OPENING GREETING` section to `agents/system_prompt.py`:
+  - Instructs the AI to call `get_menu_items()` at the start of every conversation.
+  - Find the item where `is_daily_delight = true`.
+  - Include a warm, specific mention (real name, price, description) in the opening greeting.
+  - Skip gracefully if no delight is set or the item is out of stock.
+
+---
+
+### 3.5.4 — Main App Update
+
+- [x] Mount `manager_routes.router` at `/manager` prefix in `main.py` (Phase 3.5 section).
+
+---
+
+### ✅ Phase 3.5 Done When:
+- `POST /manager/menu/auto-delight` correctly reassigns the delight flag atomically.
+- `GET /manager/insights` returns a real AI-generated 2-sentence briefing with structured DB data.
+- The AI greeting mentions the Daily Delight item by name with its real price.
+
+---
+
 ## Phase 4 — Frontend Skeleton & Routing
 
 **Goal:** Create the React app with Tailwind CSS and set up the basic page structure and navigation. No real data yet — just the shell that we'll fill in Phases 5 and 6.
@@ -674,6 +731,7 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 | **Phase 1** ✅ | Foundation & Database | FastAPI running, all 6 DB tables created, seed data loaded |
 | **Phase 2** ✅ | Authentication & Security | Supabase auth working, role guards enforced, rate limiter active |
 | **Phase 3** ✅ | The AI Brain | GPT-4o-mini agent responding with real menu data, all 9 tools working |
+| **Phase 3.5** ✅ | Daily Delights & AI Insights | Daily Delight flag + auto-assign route; AI inventory briefing for managers |
 | **Phase 4** | Frontend Skeleton | React app with routing, Everforest theme, auth flow, placeholder pages |
 | **Phase 5** | Manager Experience | Full dashboard: approve/reject orders, manage inventory & stock |
 | **Phase 6** | Customer Experience | Chat UI, order status, rewards, modification with stock restoration |
@@ -681,4 +739,4 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 
 ---
 
-*End of PHASES.md v1.1 — Updated July 2026: Phases 1, 2 & 3 marked complete.*
+*End of PHASES.md v1.2 — Updated July 2026: Phase 3.5 (Daily Delights & AI Insights) marked complete.*
