@@ -66,6 +66,10 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
+# Valid roles a new user may self-select at signup time.
+_VALID_SIGNUP_ROLES = frozenset({"customer", "manager"})
+
+
 class AuthRequest(BaseModel):
     """Request body for signup and login."""
 
@@ -78,6 +82,13 @@ class AuthRequest(BaseModel):
         ...,
         min_length=6,
         description="Password (minimum 6 characters — enforced by Supabase too)",
+    )
+    # Optional — only used during signup. Login ignores this field entirely.
+    # The frontend Customer/Manager toggle passes 'customer' or 'manager' here.
+    # Unrecognised values are silently defaulted to 'customer' for safety.
+    requested_role: str | None = Field(
+        default=None,
+        description="Desired role at signup: 'customer' or 'manager'. Ignored on login.",
     )
 
 
@@ -181,6 +192,17 @@ def signup(
         logger.error("Supabase signup response missing 'id' or 'email': %s", data)
         _http_error(500, "INTERNAL_ERROR", "Unexpected response from authentication service.")
 
+    # Determine the role to assign.
+    # Only accept 'customer' or 'manager'; default to 'customer' for anything else.
+    requested_role = (payload.requested_role or "").strip().lower()
+    assigned_role = requested_role if requested_role in _VALID_SIGNUP_ROLES else "customer"
+    logger.info(
+        "Signup: requested_role=%r → assigned_role=%r for email=%r",
+        requested_role,
+        assigned_role,
+        user_email,
+    )
+
     # Upsert the user into the local `users` table.
     # We use merge() so re-registering (e.g. in dev) doesn't crash on UNIQUE.
     existing = db.query(User).filter(User.id == user_id).first()
@@ -188,13 +210,16 @@ def signup(
         local_user = User(
             id=user_id,
             email=user_email,
-            role="customer",  # All self-registered users are customers by default.
+            role=assigned_role,
             created_at=datetime.now(timezone.utc),
         )
         db.add(local_user)
         try:
             db.commit()
-            logger.info("New local user created: id=%r email=%r", user_id, user_email)
+            logger.info(
+                "New local user created: id=%r email=%r role=%r",
+                user_id, user_email, assigned_role,
+            )
         except Exception as exc:
             db.rollback()
             logger.error("Failed to create local user record: %s", exc)
@@ -338,3 +363,70 @@ def get_me(current_user: CurrentUser) -> User:
     This route is protected by get_current_user (JWT must be present and valid).
     """
     return current_user
+
+
+# ---------------------------------------------------------------------------
+# DELETE /auth/me — Account Deletion (Phase 7)
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/me",
+    status_code=200,
+    summary="Permanently delete the current user's account",
+    tags=["Auth"],
+)
+def delete_me(
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """
+    Permanently delete the authenticated user's record from the local database.
+
+    This removes:
+      - The users row (primary record).
+      - All associated orders, order_items, and reward_points via DB cascade.
+
+    Note on Supabase:
+      This endpoint only deletes the local SQLite record. The Supabase Auth user
+      entry is intentionally NOT deleted here (that requires the service role key
+      which should only be used server-side in a secure admin context, not in a
+      per-request handler). Since get_current_user() looks up the user in the
+      local table, all subsequent authenticated requests will fail with 401 once
+      the local row is gone — effectively locking the account.
+
+    The frontend MUST clear its local session (localStorage) upon receiving this
+    response and redirect the user to /login.
+    """
+    user_id: str = current_user.id
+    user_email: str = current_user.email
+
+    logger.info(
+        "DELETE /auth/me — deleting account for user id=%r email=%r",
+        user_id,
+        user_email,
+    )
+
+    user_row = db.query(User).filter(User.id == user_id).first()
+    if user_row is None:
+        # Already deleted or doesn't exist — treat as success.
+        logger.warning("DELETE /auth/me — user %r not found in local DB (already deleted?)", user_id)
+        return {
+            "success": True,
+            "message": "Account not found — may have already been deleted.",
+            "action": "CLEAR_SESSION",
+        }
+
+    try:
+        db.delete(user_row)
+        db.commit()
+        logger.info("DELETE /auth/me — user %r deleted successfully", user_id)
+    except Exception as exc:
+        db.rollback()
+        logger.error("DELETE /auth/me — failed to delete user %r: %s", user_id, exc)
+        _http_error(500, "INTERNAL_ERROR", "Could not delete account. Please try again.")
+
+    return {
+        "success": True,
+        "message": "Your account has been permanently deleted.",
+        "action": "CLEAR_SESSION",
+    }

@@ -162,6 +162,9 @@ def rate_limit(
             current_user.id,
             exc,
         )
+        # Disable ratelimiter for future requests to avoid repeated delays
+        global _ratelimit
+        _ratelimit = None
         return current_user
 
     # ------------------------------------------------------------------

@@ -57,6 +57,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+from fastapi.staticfiles import StaticFiles
+
 # ---------------------------------------------------------------------------
 # FastAPI instance
 # ---------------------------------------------------------------------------
@@ -73,6 +75,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Create static directory for images
+os.makedirs("static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +129,8 @@ def on_startup() -> None:
     Creates any missing database tables without dropping existing data.
     This is safe to run on every startup (it is idempotent).
     """
+    from app.database import DATABASE_URL  # import after module is fully loaded
+    logger.info("Database URL: %s", DATABASE_URL)
     logger.info("Creating database tables (if they don't exist)...")
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables verified/created successfully.")
@@ -177,8 +185,10 @@ app.include_router(chat_routes.router, prefix="/chat", tags=["Chat"])
 
 # ── Phase 3.5 (ACTIVE) ──────────────────────────────────────────────────────
 from app.routes import manager as manager_routes  # noqa: E402
+from app.routes import menu as menu_routes        # noqa: E402
 
 app.include_router(manager_routes.router, prefix="/manager", tags=["Manager"])
+app.include_router(menu_routes.router, prefix="/menu", tags=["Menu"])
 
 # ── Phase 5 (pending) ───────────────────────────────────────────────────────
 # from app.routes import manager_orders, manager_menu, manager_analytics

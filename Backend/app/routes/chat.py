@@ -141,6 +141,29 @@ def send_message(
 
 
 # ---------------------------------------------------------------------------
+# GET /chat/order/{order_id}/status
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/order/{order_id}/status",
+    summary="Poll the status of an order",
+    description="Allows a customer to poll the status of their order during the HITL pause.",
+    tags=["Chat"],
+)
+def get_order_status(
+    order_id: int,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+):
+    from app.models.order import Order
+    order = db.query(Order).filter(Order.id == order_id, Order.customer_id == current_user.id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    print(f"\n📦 [ORDER STATUS CHECK] Order #{order_id} Current Status: {order.status}")
+    return {"status": order.status}
+
+
+# ---------------------------------------------------------------------------
 # GET /chat/history
 # ---------------------------------------------------------------------------
 

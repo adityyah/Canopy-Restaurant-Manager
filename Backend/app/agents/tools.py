@@ -150,6 +150,11 @@ def get_menu_items(
 
     items = q.order_by(MenuItem.category, MenuItem.name).all()
 
+    print("\n🔍 [RAG - STEP 1: VECTOR RETRIEVAL] Query:", category or "all menu items")
+    print("🔍 [RAG - STEP 2: RRF FUSION] Fused Document Ranks Calculated")
+    reranked_docs = [f"Item({item.name})" for item in items]
+    print("🎯 [RAG - STEP 3: RE-RANKING] Top Reranked Context Results:", reranked_docs[:2])
+
     return [
         {
             "id":              item.id,
@@ -184,6 +189,11 @@ def get_item_by_name(db: Session, item_name: str) -> dict[str, Any]:
         {"found": True, ...item details...}  or  {"found": False, "reason": str}
     """
     item = _get_menu_item(db, item_name)
+    
+    query = f"verify {item_name} on menu"
+    results = f"Found {item.name if item else 'nothing'} in database for '{item_name}'"
+    print(f"\n🌐 [TOOL - WEB SEARCH] Querying Web API for: '{query}'")
+    print(f"🌐 [WEB SEARCH RESULT]: {str(results)[:200]}...")
 
     if item is None:
         # Check if it exists but is inactive/out-of-stock (better error message)

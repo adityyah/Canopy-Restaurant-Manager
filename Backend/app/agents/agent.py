@@ -117,7 +117,7 @@ def get_menu_items(
     vegetarian_only: bool = False,
     vegan_only: bool = False,
     gluten_free_only: bool = False,
-) -> list[dict]:
+) -> str:
     """
     Retrieve all active, in-stock menu items. Use optional filters to narrow results.
 
@@ -128,13 +128,14 @@ def get_menu_items(
         gluten_free_only: If true, return only gluten-free items.
     """
     with SessionLocal() as db:
-        return _get_menu_items(
+        items = _get_menu_items(
             db,
             category=category or None,
             vegetarian_only=vegetarian_only,
             vegan_only=vegan_only,
             gluten_free_only=gluten_free_only,
         )
+        return json.dumps(items)
 
 
 @tool
@@ -303,15 +304,39 @@ def agent_node(state: State) -> dict[str, Any]:
     always fresh (the system prompt may be updated between sessions, and
     we don't want a stale version persisted in MemorySaver).
 
+    Bug fix (greeting loop): We now inject a factual TURN_CONTEXT note into
+    the system prompt that tells the LLM whether this is the first turn or an
+    ongoing conversation. The LLM cannot reliably infer this itself when the
+    system message is freshly prepended every call — so we compute it here
+    in Python (where we have access to the full state) and pass it in.
+
     Adapted from graph.py's agent_node.
     """
-    sys_msg = SystemMessage(content=SYSTEM_PROMPT)
+    # Determine whether any prior AIMessage exists in the conversation.
+    # MemorySaver persists messages across calls so prior_ai_turns > 0 means
+    # this is NOT the first message in this session.
+    prior_ai_turns = sum(1 for m in state["messages"] if isinstance(m, AIMessage) and m.content)
+
+    if prior_ai_turns == 0:
+        turn_context = (
+            "\n\n[TURN CONTEXT]: This IS the customer's first message. "
+            "You should call get_menu_items() to fetch the daily delight and include a warm greeting."
+        )
+    else:
+        turn_context = (
+            f"\n\n[TURN CONTEXT]: This is an ONGOING conversation (prior assistant turns: {prior_ai_turns}). "
+            "DO NOT output a greeting. Answer the customer's latest message directly. "
+            "Only call tools if they are needed to answer the question."
+        )
+
+    sys_msg = SystemMessage(content=SYSTEM_PROMPT + turn_context)
     messages_with_system = [sys_msg] + state["messages"]
 
     logger.debug(
-        "agent_node: invoking LLM with %d messages for customer %s",
+        "agent_node: invoking LLM with %d messages for customer %s (first_turn=%s)",
         len(messages_with_system),
         state.get("customer_id", "?"),
+        prior_ai_turns == 0,
     )
 
     response: AIMessage = llm_with_tools.invoke(messages_with_system)
@@ -548,7 +573,8 @@ def run_agent(customer_id: str, user_message: str) -> dict[str, Any]:
         "configurable": {
             # One conversation thread per customer — MemorySaver persists history.
             "thread_id": customer_id,
-        }
+        },
+        "recursion_limit": 10,
     }
 
     initial_state = {

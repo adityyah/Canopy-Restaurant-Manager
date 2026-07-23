@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Generator
 
 from dotenv import load_dotenv
@@ -24,22 +25,39 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # Load .env values from the backend/ root before reading DATABASE_URL.
-load_dotenv()
+# point load_dotenv at the actual .env file so it works regardless of CWD.
+_backend_dir = Path(__file__).resolve().parent.parent  # backend/app/../ == backend/
+load_dotenv(dotenv_path=_backend_dir / ".env")
 
 # ------------------------------------------------------------------------------
 # Engine
 # ------------------------------------------------------------------------------
 
-# The DATABASE_URL env var is expected in the form:
-#   sqlite:///restaurant.db   (relative → file lives next to main.py)
-# Falls back to a sane default so the dev server still starts without a .env.
-DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///restaurant.db")
+# DATABASE_URL path fix:
+# sqlite:///restaurant.db (3 slashes) is a RELATIVE path — SQLite resolves it
+# against the CWD at the moment the engine is created. If uvicorn is launched
+# from a different directory than the one where seed.py ran, SQLAlchemy silently
+# opens (or creates) a different, empty database file. This is the classic
+# "two database files" bug that causes GET /menu to return [].
+#
+# Fix: if DATABASE_URL is not set or uses the bare relative form, compute an
+# absolute path anchored to this file's location (backend/app/database.py →
+# backend/restaurant.db). An absolute path is unaffected by CWD.
+
+_env_db_url: str = os.getenv("DATABASE_URL", "")
+
+if not _env_db_url or _env_db_url == "sqlite:///restaurant.db":
+    # Compute absolute path: backend/restaurant.db
+    _db_path: Path = _backend_dir / "restaurant.db"
+    DATABASE_URL: str = f"sqlite:///{_db_path.as_posix()}"
+else:
+    DATABASE_URL = _env_db_url
 
 engine = create_engine(
     DATABASE_URL,
     # Required for SQLite in a multi-threaded WSGI/ASGI context.
     connect_args={"check_same_thread": False},
-    # Set echo=True here temporarily to log all SQL queries during debugging.
+    # Flip to True temporarily to see every SQL statement in the server log.
     echo=False,
 )
 

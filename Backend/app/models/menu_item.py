@@ -168,6 +168,12 @@ class MenuItem(Base):
         comment="True = this item is today's featured Daily Delight; at most one row at a time",
     )
 
+    image_url: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        comment="URL path to the item's image",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
