@@ -522,9 +522,95 @@ Create one file per table inside `models/`. Each file defines the columns, data 
 
 ---
 
-## Phase 6 — The Manager Dashboard
+## Phase 6 — Manager Dashboard & Authentication ✅
 
-**Goal:** Build everything the manager sees and interacts with. By the end of this phase, a manager can log in, review orders, approve or reject them, and fully manage the restaurant's menu and inventory — all from the dashboard.
+**Goal:** Wire the full authentication flow and build the complete manager-facing UI. By the end of this phase, a manager can log in, review and action pending orders (resolving the LangGraph HITL interrupt), manage inventory, set the Daily Delight, and read AI-generated advisories.
+
+---
+
+### 6.1 — Authentication Wiring
+
+- [x] **`pages/Login.tsx`** — Single login/signup card:
+  - Email + password fields with label uppercase tracking and placeholder styling.
+  - Mode toggle (Login ↔ Sign up) inline, no extra route.
+  - After login: stores JWT, then immediately calls `GET /auth/me` to fetch `role`.
+  - Routes manager → `/manager`, customer → `/chat`.
+  - Error/success banners use DESIGN.md colour system.
+  - Playfair Display brand heading, Inter form text.
+
+- [x] **`AuthContext.login()`** patched:
+  - Step 1: `POST /auth/login` → stores JWT in localStorage.
+  - Step 2: `GET /auth/me` → fetches `{ id, email, role }` (Supabase response omits role).
+  - Stores complete `AuthUser` object.
+
+- [x] **`App.tsx`** `SmartRedirect` at `/`:
+  - Manager → `/manager`. Customer → `/chat`. Guest → `/login`. No flash, no double-redirect.
+
+- [x] **`ProtectedRoute`** redirect updated from `/` → `/login`.
+
+---
+
+### 6.2 — Manager Layout
+
+- [x] **`layouts/ManagerLayout.tsx`**:
+  - Sticky top nav bar with three `NavLink` tabs: `📋 Orders` · `🌿 Inventory` · `🤖 Insights`.
+  - Active tab: `accent-green` text + `2px` bottom border (DESIGN.md § 4.7).
+  - Right: truncated user email + `manager` badge + Sign out.
+  - `useEffect` role guard: non-managers immediately redirected to `/login`.
+  - Mobile: horizontal scrollable tab bar below the main bar.
+  - `<Outlet />` renders the active nested page.
+  - React Router nested routes: `/manager` → `OrdersView` (index), `/manager/inventory`, `/manager/insights`.
+
+---
+
+### 6.3 — Orders View (HITL Core)
+
+- [x] **`pages/manager/OrdersView.tsx`**:
+  - `GET /manager/orders?status=PENDING_APPROVAL` on mount + 10-second interval poll.
+  - Each card: order ID, customer email, item list with `×quantity` and subtotals, grand total, `timeAgo()` display, warning-yellow `3px` left border.
+  - **Approve**: `POST /manager/orders/{id}/approve` → card fades out, reward points awarded server-side.
+  - **Reject**: toggles inline textarea (optional reason) → `POST /manager/orders/{id}/reject` → card removed.
+  - `actingIds: Set<number>` prevents double-clicks.
+  - Manual `↺ Refresh` button. Last-refreshed timestamp shown.
+  - Empty state: Playfair Display "All caught up!" card.
+
+---
+
+### 6.4 — Inventory View
+
+- [x] **`pages/manager/InventoryView.tsx`**:
+  - `GET /manager/menu` — all items including inactive ones.
+  - CSS grid table columns: Name · Category · Price · Stock · Status · Delight.
+  - **Low-stock rows** (≤ 5 units): `4px warning-yellow` left border + `rgba(219,188,127,0.03)` row tint.
+  - **Out-of-stock rows**: `4px danger-red` left border.
+  - **`★ Set Daily Delight` button** (prominent `btn-primary` with green glow shadow):
+    - Calls `POST /manager/menu/auto-delight`.
+    - Shows backend message in a green (success) or red (error) result banner.
+    - Re-fetches the table to show updated `★ Today's Delight` sub-label and `🌟` emoji.
+
+---
+
+### 6.5 — AI Insights View
+
+- [x] **`pages/manager/InsightsView.tsx`**:
+  - `GET /manager/insights` on mount. `↺ Regenerate` button for fresh AI call.
+  - **Stat tiles**: Pending Approvals (warning-yellow) and Low-Stock Items (accent-green / danger-red by count).
+  - **AdvisoryCard**: `4px accent-green` left border, radial gradient background (no neon), Playfair Display `h2` heading, Inter body text.
+  - **LowStockTable**: per-row `danger-red` / `warning-yellow` left borders with stock count in matching colour.
+  - Skeleton loader while fetching. Graceful empty state ("All items well-stocked ✅").
+
+---
+
+### ✅ Phase 6 Done When:
+- Navigating to `/` redirects correctly based on role (or to `/login` for guests).
+- A manager logs in → reaches `/manager` → sees pending orders with Approve/Reject buttons.
+- Approving an order removes it from the queue and awards reward points.
+- Rejecting stores the optional reason.
+- Inventory table shows stock levels with correct colour accents.
+- Set Daily Delight assigns the correct item and updates the table.
+- AI Insights panel shows the GPT-4o-mini advisory and low-stock table.
+
+---
 
 ---
 
@@ -742,6 +828,19 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 
 **Goal:** Make the app feel finished and portfolio-ready. By the end of this phase, the project is visually polished, tested end-to-end, and ready to show to anyone.
 
+### 7.0 — Account Settings & Login Polish ✅
+
+- [x] **Account Settings page (`/settings`):** Session info panel (email, role badge), Switch Account button (logout + redirect), and a two-step Danger Zone for permanent account deletion (requires typing `delete my account` before the destruction button activates).
+- [x] **`DELETE /auth/me` backend route:** Deletes the user's local SQLite row and returns `CLEAR_SESSION` action for the frontend.
+- [x] **⚙ Settings link** added to `Navbar.tsx` (customer nav) and `ManagerLayout.tsx` (manager nav).
+- [x] **Login page Customer/Manager toggle tabs:** Visual tab switcher at the top of the login card lets users explicitly choose between "Customer" and "Manager Portal" mode. Heading and submit button label update based on selected tab.
+
+---
+
+### 7.2 — UI Overhaul & Image Uploads ✅
+
+- [x] Overhauled Customer UI to fine-dining layout and implemented Manager image uploads.
+
 ---
 
 ### 7.1 — End-to-End Testing
@@ -785,6 +884,7 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 - [ ] Write a `README.md` in the project root. It must include:
   - A one-paragraph project description.
   - A screenshot or short screen recording of the chat UI and manager dashboard.
+  Also removed the now-unused LoadingSpinner import.
   - A list of every technology used and why it was chosen.
   - Step-by-step setup instructions so anyone can clone and run the project locally.
   - A link to the `About/` folder for full documentation.
@@ -822,9 +922,9 @@ All chart data must be pre-calculated by the backend before being sent to the fr
 | **Phase 3.5** ✅ | Daily Delights & AI Insights | Daily Delight flag + auto-assign route; AI inventory briefing for managers |
 | **Phase 4** ✅ | Frontend Skeleton | React/Vite/TS app, Everforest Tailwind, all 8 routes, Axios client + auth guards |
 | **Phase 5** ✅ | Customer Terminal & AI Chat | Playfair Display hero, menu grid, sticky chat, HITL banner, rate-limit countdown |
-| **Phase 6** | Manager Dashboard | Approve/reject orders, CRUD inventory, Recharts analytics — all wired live |
-| **Phase 7** | Polish & Deployment | End-to-end tested, UI polished, README written, portfolio ready |
+| **Phase 6** ✅ | Manager Dashboard & Auth | Login page, SmartRedirect, ManagerLayout, OrdersView (HITL), InventoryView, InsightsView |
+| **Phase 7** ✅ | Polish & Deployment | Account Settings page, DELETE /auth/me, Customer/Manager login toggle tabs; end-to-end polish in progress |
 
 ---
 
-*End of PHASES.md v1.4 — Updated July 2026: Phase 5 (Customer Terminal & AI Chat UI) marked complete.*
+*End of PHASES.md v1.6 — Updated July 2026: Phase 7 (Polish & Deployment) partially complete — Account Settings, Login Toggle, and Account Deletion done.*

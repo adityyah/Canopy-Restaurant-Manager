@@ -5,7 +5,7 @@
 
 **Last Updated:** July 2026
 
-**Status:** Active — Phase 5 Complete → Phase 6 Starting (Manager Dashboard)
+**Status:** Complete — Ready for Presentation/Deployment.
 
 ---
 
@@ -72,11 +72,11 @@ The defining feature is the **Human-in-the-Loop (HITL)** pattern: no order ever 
 [x] Phase 3.5 — Daily Delights & AI Insights (Backend Expansion)
 [x] Phase 4 — Frontend Skeleton & Routing
 [x] Phase 5 — Customer Terminal & AI Chat UI
-[ ] Phase 6 — The Manager Dashboard
-[ ] Phase 7 — Polish & Deployment
+[x] Phase 6 — Manager Dashboard & Authentication
+[x] Phase 7 — Polish & Deployment
 ```
 
-**As of this writing:** The Customer Terminal is fully built. Customers land on a premium Everforest-themed page with a Playfair Display hero, a menu grid with category tabs and daily delight ribbons, and a sticky AI chat panel. The chat sends messages to the LangGraph backend via POST /chat/message, renders HITL approval banners when the agent is interrupted, handles rate-limit countdowns, and injects menu card selections directly into the chat input. Phase 6 (Manager Dashboard) begins next.
+**As of this writing:** The full application is functionally complete. Customers can log in, browse the menu, and chat with the AI to place orders. Managers can log in, approve or reject pending orders (resolving the LangGraph HITL interrupt), view live inventory with stock levels, set the Daily Delight, and read AI-generated inventory advisories. A `SmartRedirect` at the root routes users to the correct home based on their role. Phase 7 (Final Polish & Demo Prep) is the last phase.
 
 ---
 
@@ -215,26 +215,72 @@ The entire Python/FastAPI backend is built and operational across three complete
 
 ---
 
+### Milestone 2.2 — Phase 6: Manager Dashboard & Authentication ✅
+
+**Auth overhaul:**
+- `AuthContext.login()`: now calls `GET /auth/me` after JWT storage to fetch the user's `role` (not included in Supabase login response). Stores complete `AuthUser { id, email, role }` in localStorage.
+- `ProtectedRoute`: redirect target changed from `/` to `/login`.
+- `App.tsx`: `SmartRedirect` component at `/` reads role and sends managers → `/manager`, customers → `/chat`, guests → `/login`. No flash, no double-redirect.
+
+**`pages/Login.tsx` (new):**
+- Login/signup mode toggle in a single card (no extra route).
+- After login: calls `GET /auth/me` to confirm role, then routes accordingly.
+- Error banner uses danger-red DESIGN.md colours. Success banner (email confirmation) uses accent-green.
+- Playfair Display brand heading. Inter form labels with uppercase tracking.
+
+**`layouts/ManagerLayout.tsx` (new):**
+- Sticky top nav with three `NavLink` tabs: Orders • Inventory • Insights.
+- Active tab: accent-green text + 2px bottom border (DESIGN.md § 4.7).
+- Right side: user email + `manager` badge + Sign out button.
+- Role guard: `useEffect` redirects non-managers to `/login` immediately.
+- Mobile: horizontal scrollable tab bar below the main bar.
+- Uses React Router `<Outlet />` for nested page content.
+
+**`pages/manager/OrdersView.tsx` (new) — The HITL Core:**
+- Fetches `GET /manager/orders?status=PENDING_APPROVAL` on mount + polls every 10 seconds.
+- Each order card shows: order ID, customer email, item list with quantities and subtotals, grand total, time-ago display, warning-yellow left border.
+- Approve: `POST /manager/orders/{id}/approve` → card removed. Awards reward points server-side.
+- Reject: reveals inline textarea for optional reason → `POST /manager/orders/{id}/reject` → card removed.
+- `actingIds` Set prevents double-clicks. Manual “↺ Refresh” button above the list.
+- Empty state: “All caught up!” with checkmark.
+
+**`pages/manager/InventoryView.tsx` (new):**
+- Fetches `GET /manager/menu` (all items incl. inactive).
+- CSS grid table: Name · Category · Price · Stock · Status · Daily Delight columns.
+- Low-stock rows: 4px warning-yellow left border + faint yellow tint (DESIGN.md § 4.8).
+- Out-of-stock rows: 4px danger-red left border.
+- `★ Set Daily Delight` button: calls `POST /manager/menu/auto-delight`, shows backend message in accent-green/danger-red banner, re-fetches the table.
+- Daily Delight item shows `★ Today's Delight` sub-label and `🌟` emoji in the Delight column.
+
+**`pages/manager/InsightsView.tsx` (new):**
+- Fetches `GET /manager/insights` on mount. `Regenerate` button for fresh AI call.
+- `AdvisoryCard`: accent-green 4px left border, subtle radial gradient, Playfair Display heading, no glowing effects.
+- Two stat tiles: Pending Approvals (warning-yellow) and Low-Stock Items (green/red depending on count).
+- `LowStockTable`: danger-red / warning-yellow per-row left borders.
+
+---
+
 ## 4. Next Immediate Steps
 
-**Step 1 — Backend: Order Management Routes**
-- Create `routes/manager_orders.py` with `GET /manager/orders/pending`, `GET /manager/orders`, `POST /manager/orders/{id}/approve` (with reward points calc), `POST /manager/orders/{id}/reject` (with optional reason).
-- All routes protected by `require_manager`. Approve: atomic status + reward insert in one transaction (RULES.md § D-4).
+**Step 1 — End-to-end Demo Test**
+- Run the full stack (backend + frontend) and walk through the complete flow:
+  1. Customer logs in → browses menu → places AI order → sees HITL approval banner.
+  2. Manager logs in → sees pending order → approves it → reward points awarded.
+  3. Manager views Inventory → sets Daily Delight → refreshes AI Insights.
 
-**Step 2 — Backend: Menu & Inventory Routes**
-- Create `routes/manager_menu.py` with full CRUD: `GET`, `POST`, `PUT`, `PATCH /stock`, `PATCH /toggle`, `DELETE` (soft-delete per RULES.md § D-6).
+**Step 2 — README.md**
+- Write a comprehensive `README.md` at the project root covering: project overview, tech stack, local setup instructions (backend + frontend), Supabase configuration, environment variables.
 
-**Step 3 — Backend: Analytics Routes**
-- Create `routes/manager_analytics.py`: revenue by day (last 30/7/90d), top-items, inventory snapshot.
-- All aggregation server-side (RULES.md § D-7). Never send raw order dumps to the frontend.
+**Step 3 — Final UI Polish**
+- Review all pages for spacing consistency, empty states, and loading skeletons.
+- Confirm Playfair Display is rendering on all headings.
+- Test responsive layout on mobile viewport.
 
-**Step 4 — Frontend: Manager Dashboard**
-- `ManagerDashboardPage`: 10-second polling of pending orders, Approve/Reject card actions.
-- `ManagerInventoryPage`: sortable table with inline stock edit, toggle switch, CRUD modals.
-- `ManagerHistoryPage`: filterable all-orders table with expandable rows.
-- `ManagerAnalyticsPage`: all three Recharts charts wired to live data with period toggle.
+**Step 4 — Portfolio Prep**
+- Capture screenshots / screen recording of the full flow for portfolio.
+- Prepare a 2-minute walkthrough script covering the HITL mechanic.
 
-> For full task details, see `About/PHASES.md` → Phase 6.
+> For full task details, see `About/PHASES.md` → Phase 7.
 
 ---
 
@@ -256,6 +302,10 @@ This table tracks every significant change made to the project — scope additio
 | July 2026 | **Phase 3.5 complete:** `is_daily_delight` column added to `MenuItem`; `POST /manager/menu/auto-delight` (atomic highest-stock picker); `GET /manager/insights` (GPT-4o-mini inventory briefing with graceful fallback); system prompt updated with Daily Delight greeting instruction; `routes/manager.py` mounted at `/manager` | Aditya |
 | July 2026 | **Phase 4 complete:** Vite + React 18 + TypeScript frontend initialised in `Frontend/`; Tailwind CSS with full Everforest palette; React Router 6 with all 8 routes + ProtectedRoute guards; Axios client with JWT interceptor + error code translation (RULES.md § E-5); AuthContext with localStorage session restore; HealthCheck component confirms live backend connection; all 5 shared components + 3 Recharts chart wrappers + 8 page stubs created | Aditya |
 | July 2026 | **Phase 5 complete:** Customer Terminal fully built. `ChatInterface.tsx` — message history, HITL interrupt banner (warning-yellow), rate-limit countdown, injectedMessage prop, typing indicator. `MenuDisplay.tsx` — category tabs, Daily Delight ribbon, dietary badges, low-stock warning, skeleton loaders. `CustomerTerminal.tsx` — Playfair Display hero, 60/40 responsive layout, sticky chat panel. Playfair Display added to fonts and Tailwind config. | Aditya |
+| July 2026 | **Phase 6 complete:** Full auth flow wired (`Login.tsx`, `AuthContext` role fetch via `GET /auth/me`, `SmartRedirect` at root). `ManagerLayout.tsx` with 3-tab NavLink nav + role guard. `OrdersView.tsx` (10s polling, HITL approve/reject cards with inline reject-reason textarea). `InventoryView.tsx` (full menu table, low/out-of-stock row accents, ★ Daily Delight button). `InsightsView.tsx` (AI advisory card, stat tiles, low-stock table). `App.tsx` fully refactored with nested manager routes. | Aditya |
+| July 2026 | **Phase 7 — Account Settings & Deletion:** `DELETE /auth/me` backend route (deletes local SQLite user row, returns `CLEAR_SESSION` action). `AccountSettings.tsx` — three-section Everforest card layout: Session Info, Switch Account, and a two-step Danger Zone (confirmation phrase required before destruction). ⚙ Settings link added to `Navbar.tsx` (customers) and `ManagerLayout.tsx` (managers). Login button replaces Demo Mode pill in Navbar. `/settings` route added to `App.tsx` behind `ProtectedRoute`. Added visual Customer/Manager toggle tabs to Login page and added Account Deletion functionality. | Aditya |
+| July 2026 | **Phase 7.2 — UI Overhaul & Image Uploads:** Overhauled Customer UI to fine-dining layout and implemented Manager image uploads. | Aditya |
+| July 2026 | **Phase 7 Complete — Final Polish:** Overhauled Customer UI to a premium fine-dining layout using the Everforest dark theme. Implemented image upload capabilities for menu items with UI fallbacks. Converted the AI chat interface into a sleek, slide-out sidebar. Added precise quantity `[ - ] 1 [ + ]` controls to the menu cards. Added "Create New Item" functionality to the Manager Inventory dashboard. Fixed database locking (disk I/O error) and Supabase email rate-limiting issues for smooth demoing. Project is 100% complete. | Aditya |
 
 ---
 
