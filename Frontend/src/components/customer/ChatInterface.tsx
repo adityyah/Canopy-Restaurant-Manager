@@ -135,7 +135,22 @@ function ApprovalBanner() {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
 
-  if (message.role === 'system') return null
+  if (message.role === 'system') {
+    const isSuccess = message.content.includes('🎉')
+    return (
+      <div className="flex justify-center my-2 animate-fade-in" role="status" aria-live="polite">
+        <div className="px-4 py-2.5 rounded-lg text-sm max-w-[85%] text-center border"
+          style={{
+            background: isSuccess ? 'rgba(167, 192, 128, 0.1)' : 'rgba(230, 126, 128, 0.1)',
+            borderColor: isSuccess ? 'rgba(167, 192, 128, 0.3)' : 'rgba(230, 126, 128, 0.3)',
+            color: isSuccess ? '#A7C080' : '#E67E80'
+          }}
+        >
+          {message.content}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -192,6 +207,7 @@ export default function ChatInterface({ injectedMessage, onInjectedConsumed }: P
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null)
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null)
 
   const scrollAnchorRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -226,6 +242,66 @@ export default function ChatInterface({ injectedMessage, onInjectedConsumed }: P
     }
   }, [rateLimitSeconds])
 
+  // -------------------------------------------------------------------------
+  // POLLING LOGIC
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout
+    if (pendingOrderId) {
+      intervalId = setInterval(async () => {
+        try {
+          const data = await api.get<{ status: string }>(`/orders/${pendingOrderId}`)
+          
+          if (data.status === 'REJECTED' || data.status === 'CANCELLED') {
+            clearInterval(intervalId)
+            setPendingOrderId(null)
+            
+            setMessages((prev) => 
+              prev.map((msg) => msg.isInterrupted ? { ...msg, isInterrupted: false } : msg)
+            )
+            
+            const rejectMsg: Message = {
+              id: generateId(),
+              role: 'system',
+              content: '❌ The manager has declined your order. Please feel free to ask for other recommendations.',
+              timestamp: new Date(),
+            }
+            setMessages((prev) => [...prev, rejectMsg])
+            
+            // Ensure LangGraph memory is updated
+            api.post('/chat/message', { 
+              message: "SYSTEM_INJECT: The manager rejected my order. Acknowledge this rejection, apologize, and ask if I'd like to modify my order. Do not attempt to confirm."
+            }).catch(console.error)
+
+          } else if (data.status === 'APPROVED') {
+            clearInterval(intervalId)
+            setPendingOrderId(null)
+            
+            setMessages((prev) => 
+              prev.map((msg) => msg.isInterrupted ? { ...msg, isInterrupted: false } : msg)
+            )
+            
+            const successMsg: Message = {
+              id: generateId(),
+              role: 'system',
+              content: '🎉 Your order has been approved and is being prepared!',
+              timestamp: new Date(),
+            }
+            setMessages((prev) => [...prev, successMsg])
+            
+            // Ensure LangGraph memory is updated
+            api.post('/chat/message', { 
+              message: "SYSTEM_INJECT: The manager APPROVED my order. Please acknowledge this briefly."
+            }).catch(console.error)
+          }
+        } catch (error) {
+          console.error("Polling failed", error)
+        }
+      }, 3000)
+    }
+    return () => clearInterval(intervalId)
+  }, [pendingOrderId])
+
   const sendMessage = useCallback(async () => {
     const text = input.trim()
     if (!text || isLoading) return
@@ -252,6 +328,10 @@ export default function ChatInterface({ injectedMessage, onInjectedConsumed }: P
         isInterrupted: data.interrupted,
       }
       setMessages((prev) => [...prev, assistantMsg])
+      
+      if (data.interrupted && data.order_id) {
+        setPendingOrderId(data.order_id)
+      }
     } catch (err: unknown) {
       const apiErr = err as CanopyApiError
 
@@ -290,17 +370,7 @@ export default function ChatInterface({ injectedMessage, onInjectedConsumed }: P
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Chat header ──────────────────────────────────────────────── */}
-      <div
-        className="px-5 py-3.5 border-b border-bg-border flex items-center gap-3"
-        style={{ background: '#343F44' }}
-      >
-        <div className="w-2.5 h-2.5 rounded-full bg-accent-green animate-pulse" />
-        <div>
-          <p className="text-text-heading font-semibold text-sm">Canopy Assistant</p>
-          <p className="text-text-muted text-xs">AI-powered · Always available</p>
-        </div>
-      </div>
+      {/* ── Chat header removed (moved to FloatingChatWidget) ── */}
 
       {/* ── Rate limit banner ─────────────────────────────────────────── */}
       {rateLimitSeconds !== null && (

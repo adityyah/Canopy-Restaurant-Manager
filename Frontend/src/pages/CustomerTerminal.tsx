@@ -1,135 +1,289 @@
 // frontend/src/pages/CustomerTerminal.tsx
 // =============================================================================
-// CustomerTerminal — The Complete Customer Experience
+// CustomerTerminal — Fine-Dining Customer Experience
 // =============================================================================
-// Composes the full customer-facing page:
+// Layout (Phase 7.2):
 //
-//   ┌─────────────────────────────────────────────────────────────────────┐
-//   │  NAVBAR (Canopy brand + user + sign-out)                            │
-//   ├─────────────────────────────────────────────────────────────────────┤
-//   │                                                                     │
-//   │  HERO  "Good Food, Great Mood"   (Playfair Display — earthy, warm)  │
-//   │        Tagline + daily delight callout                              │
-//   │                                                                     │
-//   ├──────────────────────────────────────┬──────────────────────────────┤
-//   │                                      │                              │
-//   │  MenuDisplay (60%)                   │  ChatInterface (40%)         │
-//   │  ─ Category tabs                     │  ─ Sticky / full height      │
-//   │  ─ Item cards (2-col grid)           │  ─ Auto-scroll              │
-//   │  ─ Add to Order → injects string     │  ─ Interrupt banner          │
-//   │                                      │                              │
-//   └──────────────────────────────────────┴──────────────────────────────┘
+//   ┌──────────────────────────────────────────────────────────────────────────┐
+//   │  NAV: [Home  Menu  About]   [CANOPY 🌿]   [Profile  🛒]                │
+//   ├──────────────────────────────────────────────────────────────────────────┤
+//   │  HERO: Left — big Playfair text + 2 CTAs   Right — circular food img   │
+//   ├──────────────────────────────────────────────────────────────────────────┤
+//   │  CATEGORIES STRIP (circular avatars)                                    │
+//   ├──────────────────────────────────────────────────────────────────────────┤
+//   │  MENU GRID (Chef's Recommendations cards)                               │
+//   └──────────────────────────────────────────────────────────────────────────┘
+//   FLOATING AI CHAT WIDGET — bottom-right corner, expands on click
 //
-// Layout notes:
-//   • On desktop (lg+): side-by-side. Menu 60%, Chat 40%.
-//   • On mobile / tablet: stacked, chat on top (above fold) for primary CTA.
-//   • The chat panel is `sticky top-0` on desktop so it remains in view
-//     while the customer scrolls through the menu grid.
-//   • The injectedMessage flow: MenuCard → onAddToOrder → state in this
-//     component → prop to ChatInterface → pre-fills input → cleared.
-//
-// Design philosophy (DESIGN.md § 1):
-//   "Think of walking into a quiet, well-lit restaurant at dusk — dark wood
-//    tables, soft green plants on the windowsills, warm candlelight."
+// Theme: Everforest dark (#2D353B bg, #D3C6AA text, #A7C080 green, #E69875 orange)
+// Typography: Playfair Display for headings, Inter for body
 // =============================================================================
 
 import { useState, useCallback } from 'react'
-import Navbar from '@/components/Navbar'
+import { Link, useNavigate } from 'react-router-dom'
 import MenuDisplay from '@/components/customer/MenuDisplay'
-import ChatInterface from '@/components/customer/ChatInterface'
+import FloatingChatWidget from '@/components/customer/FloatingChatWidget'
 import { useAuth } from '@/context/AuthContext'
 
 // ---------------------------------------------------------------------------
-// Hero Section
+// Fine-Dining Navigation
 // ---------------------------------------------------------------------------
 
-function HeroSection({ greeting }: { greeting: string }) {
+function FineDiningNav() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
+  return (
+    <nav
+      className="sticky top-0 z-40 w-full"
+      style={{
+        background: 'rgba(45, 53, 59, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(71, 82, 88, 0.6)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-6 py-4 grid grid-cols-3 items-center">
+        {/* Left Nav Links */}
+        <div className="flex items-center gap-7">
+          <a href="#menu" className="text-text-muted hover:text-accent-green text-sm font-medium transition-colors duration-150">Home</a>
+          <a href="#menu" className="text-text-muted hover:text-accent-green text-sm font-medium transition-colors duration-150">Menu</a>
+          <a href="#about" className="text-text-muted hover:text-accent-green text-sm font-medium transition-colors duration-150">About</a>
+        </div>
+
+        {/* Centred Logo */}
+        <div className="flex justify-center">
+          <span
+            className="font-display font-bold text-2xl select-none"
+            style={{ color: '#DBBC7F', letterSpacing: '0.04em' }}
+          >
+            Canopy 🌿
+          </span>
+        </div>
+
+        {/* Right Utilities */}
+        <div className="flex items-center justify-end gap-5">
+          {user && (
+            <span className="text-text-muted text-xs hidden md:block truncate max-w-[120px]">
+              {user.email.split('@')[0]}
+            </span>
+          )}
+          <Link
+            to="/settings"
+            className="text-text-muted hover:text-accent-green text-sm font-medium transition-colors duration-150"
+            aria-label="Account settings"
+          >
+            ⚙
+          </Link>
+          <button
+            onClick={() => void handleLogout()}
+            className="text-text-muted hover:text-danger-red text-sm font-medium transition-colors duration-150"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Hero Section — 50/50 split
+// ---------------------------------------------------------------------------
+
+function HeroSection({ onExploreMenu }: { onExploreMenu: () => void }) {
   return (
     <section
       className="relative overflow-hidden"
-      style={{
-        // Subtle organic gradient — deeper at edges, slightly lighter in centre
-        background:
-          'radial-gradient(ellipse at 50% 0%, rgba(167,192,128,0.07) 0%, transparent 70%), #2D353B',
-        borderBottom: '1px solid #475258',
-      }}
+      style={{ background: '#2D353B' }}
       aria-labelledby="hero-heading"
     >
-      {/* Decorative leaf pattern — pure CSS, no images */}
+      {/* Subtle radial glow behind the image side */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 15% 50%, rgba(131,192,146,0.04) 0%, transparent 50%), ' +
-            'radial-gradient(circle at 85% 20%, rgba(167,192,128,0.05) 0%, transparent 40%)',
+            'radial-gradient(ellipse at 75% 50%, rgba(167,192,128,0.06) 0%, transparent 60%),' +
+            'radial-gradient(ellipse at 25% 80%, rgba(230,152,117,0.04) 0%, transparent 50%)',
         }}
       />
 
-      <div className="page-container py-10 relative z-10">
-        <div className="max-w-2xl">
-          {/* Micro-label above the heading */}
-          <div className="flex items-center gap-2 mb-3">
-            <span
-              className="text-xs font-semibold tracking-widest uppercase"
-              style={{ color: '#A7C080' }}
-            >
-              Canopy Restaurant
-            </span>
-            <span className="w-8 h-px bg-accent-green opacity-50" />
-          </div>
+      <div className="max-w-7xl mx-auto px-6 py-20 lg:py-28">
+        <div className="flex flex-col lg:flex-row items-center gap-14 lg:gap-20">
 
-          {/* Main heading — Playfair Display, DESIGN.md § 3.2 Page Title (H1) */}
-          <h1
-            id="hero-heading"
-            className="font-display font-bold text-text-heading mb-2"
-            style={{ fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.2 }}
-          >
-            Good Food,{' '}
-            <span style={{ color: '#A7C080', fontStyle: 'italic' }}>Great Mood.</span>
-          </h1>
-
-          {/* Tagline */}
-          <p className="text-text-muted text-sm leading-relaxed max-w-lg">
-            {greeting}, welcome back. Tell our AI what you're craving — it will
-            help you build your order and send it straight to the kitchen.
-          </p>
-
-          {/* Feature pills */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            {[
-              { icon: '🤖', label: 'AI-Powered Ordering' },
-              { icon: '👨‍🍳', label: 'Manager-Approved' },
-              { icon: '⭐', label: 'Earn Reward Points' },
-            ].map(({ icon, label }) => (
+          {/* ── LEFT: Text + CTAs ──────────────────────────────────────── */}
+          <div className="flex-1 text-center lg:text-left">
+            {/* Eyebrow */}
+            <div className="flex items-center justify-center lg:justify-start gap-3 mb-6">
+              <span className="block h-px w-10 bg-[#DBBC7F] opacity-70" />
               <span
-                key={label}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                className="text-xs font-semibold tracking-[0.2em] uppercase"
+                style={{ color: '#DBBC7F' }}
+              >
+                Fine Dining & AI Ordering
+              </span>
+              <span className="block h-px w-10 bg-[#DBBC7F] opacity-70" />
+            </div>
+
+            {/* H1 */}
+            <h1
+              id="hero-heading"
+              className="font-display font-bold leading-[1.08] mb-7"
+              style={{
+                fontSize: 'clamp(38px, 5.5vw, 68px)',
+                color: '#D3C6AA',
+              }}
+            >
+              Delicious Food,{' '}
+              <span style={{ color: '#A7C080', fontStyle: 'italic' }}>
+                Unforgettable
+              </span>
+              <br />
+              Moments.
+            </h1>
+
+            <p className="text-text-muted text-base leading-relaxed mb-10 max-w-md mx-auto lg:mx-0">
+              Savour every bite, curated by our chefs and effortlessly ordered
+              through our intelligent assistant. Your table, your way.
+            </p>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+              <button
+                className="min-w-[160px] px-8 py-3.5 rounded-lg font-semibold text-sm tracking-wide transition-all duration-200"
                 style={{
-                  background: 'rgba(71, 82, 88, 0.6)',
-                  color: '#9DA9A0',
-                  border: '1px solid rgba(71, 82, 88, 0.8)',
+                  background: '#DBBC7F',
+                  color: '#2D353B',
+                  boxShadow: '0 4px 20px rgba(219,188,127,0.28)',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 28px rgba(219,188,127,0.42)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 20px rgba(219,188,127,0.28)' }}
+              >
+                Book a Table
+              </button>
+              <button
+                onClick={onExploreMenu}
+                className="min-w-[160px] px-8 py-3.5 rounded-lg font-semibold text-sm tracking-wide transition-all duration-200 border"
+                style={{
+                  background: 'transparent',
+                  color: '#A7C080',
+                  borderColor: 'rgba(167,192,128,0.5)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(167,192,128,0.08)'
+                  e.currentTarget.style.borderColor = '#A7C080'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderColor = 'rgba(167,192,128,0.5)'
                 }}
               >
-                <span>{icon}</span>
-                {label}
-              </span>
-            ))}
+                Explore Menu ↓
+              </button>
+            </div>
+
+            {/* Social proof micro-copy */}
+            <div className="flex items-center justify-center lg:justify-start gap-4 mt-8">
+              <div className="flex -space-x-2">
+                {['#A7C080', '#DBBC7F', '#E69875', '#83C092'].map((c, i) => (
+                  <div
+                    key={i}
+                    className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold"
+                    style={{ background: c, borderColor: '#2D353B', color: '#2D353B' }}
+                  >
+                    {String.fromCharCode(65 + i)}
+                  </div>
+                ))}
+              </div>
+              <p className="text-text-muted text-xs">
+                <span style={{ color: '#DBBC7F' }} className="font-semibold">4.9 ★</span>
+                {' '}from 2,400+ happy guests
+              </p>
+            </div>
           </div>
+
+          {/* ── RIGHT: Circular featured food image ────────────────────── */}
+          <div className="flex-shrink-0 flex items-center justify-center relative">
+            {/* Decorative orbital ring */}
+            <div
+              className="absolute rounded-full"
+              style={{
+                width: 'clamp(320px, 40vw, 480px)',
+                height: 'clamp(320px, 40vw, 480px)',
+                border: '1px dashed rgba(219,188,127,0.25)',
+                animation: 'spin 40s linear infinite',
+              }}
+            />
+            {/* Outer glow ring */}
+            <div
+              className="absolute rounded-full"
+              style={{
+                width: 'clamp(280px, 36vw, 440px)',
+                height: 'clamp(280px, 36vw, 440px)',
+                background: 'radial-gradient(circle, rgba(167,192,128,0.08) 0%, transparent 70%)',
+              }}
+            />
+            {/* The circle image */}
+            <div
+              className="relative overflow-hidden rounded-full shadow-2xl"
+              style={{
+                width: 'clamp(260px, 32vw, 400px)',
+                height: 'clamp(260px, 32vw, 400px)',
+                border: '4px solid rgba(219,188,127,0.3)',
+                boxShadow: '0 0 60px rgba(167,192,128,0.15), 0 24px 48px rgba(0,0,0,0.5)',
+              }}
+            >
+              <img
+                src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=85&w=800"
+                alt="Premium fine-dining dish"
+                className="w-full h-full object-cover"
+                style={{ transform: 'scale(1.05)' }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: 'radial-gradient(circle at 30% 70%, rgba(45,53,59,0.2) 0%, transparent 60%)',
+                }}
+              />
+            </div>
+
+            {/* Floating badge — top right of image */}
+            <div
+              className="absolute top-4 right-4 lg:top-6 lg:right-0 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg"
+              style={{
+                background: '#343F44',
+                border: '1px solid rgba(167,192,128,0.3)',
+                color: '#A7C080',
+              }}
+            >
+              🌿 AI Curated
+            </div>
+          </div>
+
         </div>
       </div>
+
+      {/* Bottom fade into next section */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, transparent, #2D353B)' }}
+      />
     </section>
   )
 }
+
+
 
 // ---------------------------------------------------------------------------
 // Main Page Component
 // ---------------------------------------------------------------------------
 
 export default function CustomerTerminal() {
-  const { user } = useAuth()
-
-  // The message string lifted from MenuDisplay → injected into ChatInterface
   const [injectedMessage, setInjectedMessage] = useState<string | undefined>(undefined)
 
   const handleAddToOrder = useCallback((message: string) => {
@@ -140,74 +294,58 @@ export default function CustomerTerminal() {
     setInjectedMessage(undefined)
   }, [])
 
-  // Build a personal greeting from the user's email prefix
-  const emailPrefix = user?.email?.split('@')[0] ?? 'there'
-  const greetingName =
-    emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
+  const scrollToMenu = () => {
+    document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg-base">
-      {/* ── Top Navigation ──────────────────────────────────────────── */}
-      <Navbar />
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: '#2D353B', color: '#D3C6AA' }}
+    >
+      {/* ── Navigation ───────────────────────────────────────────────────── */}
+      <FineDiningNav />
 
-      {/* ── Hero ────────────────────────────────────────────────────── */}
-      <HeroSection greeting={greetingName} />
+      {/* ── Hero Section ─────────────────────────────────────────────────── */}
+      <HeroSection onExploreMenu={scrollToMenu} />
 
-      {/* ── Main Content Area ───────────────────────────────────────── */}
-      {/*
-        Mobile: chat on top (full width), menu below.
-        Desktop (lg+): menu 60% left, chat 40% right — chat sticky.
-        The outer div is a flex column on mobile, flex row on lg.
-      */}
-      <div className="flex flex-col lg:flex-row flex-1 gap-0 page-container py-0 lg:py-6 lg:gap-6 px-0 lg:px-8">
-
-        {/* ── Chat Panel (mobile: first / full-width, desktop: right 40%) ── */}
-        {/*
-          On mobile: rendered first in DOM → appears above the menu.
-          On desktop: order-2 places it on the right, sticky keeps it in view.
-        */}
-        <div
-          className="w-full lg:w-2/5 lg:order-2 lg:sticky lg:top-6 lg:self-start
-                     border-b lg:border-b-0 border-bg-border"
-          style={{
-            // On desktop, limit height so it doesn't overflow the viewport
-            maxHeight: 'calc(100vh - 88px)',
-          }}
-        >
-          <div
-            className="h-full min-h-[480px] lg:min-h-0 card flex flex-col overflow-hidden rounded-none lg:rounded-card"
-            style={{ height: 'calc(100vh - 88px - 1.5rem)' }}
-            role="complementary"
-            aria-label="AI Chat Assistant"
-          >
-            <ChatInterface
-              injectedMessage={injectedMessage}
-              onInjectedConsumed={handleInjectedConsumed}
-            />
-          </div>
-        </div>
-
-        {/* ── Menu Panel (mobile: second / full-width, desktop: left 60%) ── */}
-        <div
-          className="w-full lg:w-3/5 lg:order-1 overflow-y-auto py-5 px-4 lg:px-0"
-          style={{ minHeight: 0 }}
-          role="main"
-          aria-label="Restaurant Menu"
-        >
-          <MenuDisplay onAddToOrder={handleAddToOrder} />
-        </div>
-      </div>
-
-      {/* ── Footer ──────────────────────────────────────────────────── */}
-      <footer
-        className="text-center py-4 border-t border-bg-border"
-        style={{ background: '#2D353B' }}
+      {/* ── Menu (categories + cards) ─────────────────────────────────────── */}
+      <main
+        id="menu"
+        className="flex-1 max-w-7xl mx-auto w-full px-6 py-16"
+        role="main"
+        aria-label="Restaurant Menu"
       >
+        <MenuDisplay onAddToOrder={handleAddToOrder} />
+      </main>
+
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer
+        id="about"
+        className="text-center py-8 border-t"
+        style={{ borderColor: 'rgba(71,82,88,0.5)', background: '#252E33' }}
+      >
+        <p
+          className="font-display font-semibold text-lg mb-1"
+          style={{ color: '#DBBC7F' }}
+        >
+          Canopy 🌿
+        </p>
         <p className="text-text-muted text-xs">
-          Canopy Restaurant &middot; All orders require manager approval &middot;{' '}
-          <span className="text-accent-green">Earn points with every meal</span>
+          All orders require manager approval · Earn reward points with every meal
         </p>
       </footer>
+
+      {/* ── Floating AI Chat Widget ───────────────────────────────────────── */}
+      <FloatingChatWidget
+        injectedMessage={injectedMessage}
+        onInjectedConsumed={handleInjectedConsumed}
+      />
+
+      {/* Spin animation for orbital ring */}
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   )
 }

@@ -1,13 +1,27 @@
 // frontend/src/components/Navbar.tsx
-// Top navigation bar — Canopy brand always visible.
-// When a user is logged in: shows email, role badge, and sign-out button.
-// When no user (Phase 5 preview / pre-auth): shows brand + "Demo Mode" pill.
-// Phase 6 will add a "Log In" button to the right side instead.
+// =============================================================================
+// Navbar — Top Navigation Bar
+// =============================================================================
+// Always-visible brand bar used on the Customer Terminal (/chat).
+//
+// Logged-in state: email · role badge · ⚙ Account Settings · Sign out
+// Guest state:     brand + Login button
+//
+// ManagerLayout has its own top nav — this Navbar is only used on the
+// customer-facing routes (/chat, /order-status, /rewards).
+// =============================================================================
 
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="bg-bg-surface border-b border-bg-border sticky top-0 z-40">
@@ -21,7 +35,7 @@ export default function Navbar() {
         {/* ── Right side ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-3">
           {user ? (
-            // Logged-in state
+            // ── Logged-in state ──────────────────────────────────────
             <>
               <span className="text-text-muted text-sm hidden sm:block truncate max-w-[180px]">
                 {user.email}
@@ -29,26 +43,33 @@ export default function Navbar() {
               <span className={user.role === 'manager' ? 'badge-approved' : 'badge-draft'}>
                 {user.role}
               </span>
+
+              {/* ⚙ Account Settings */}
+              <Link
+                to="/settings"
+                className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5"
+                title="Account Settings"
+              >
+                <span>⚙</span>
+                <span className="hidden sm:inline">Settings</span>
+              </Link>
+
+              {/* Sign out */}
               <button
-                onClick={() => void logout()}
+                onClick={() => void handleLogout()}
                 className="btn-ghost text-xs px-3 py-1.5"
               >
                 Sign out
               </button>
             </>
           ) : (
-            // No user — Phase 5 preview / auth not yet wired
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
-              style={{
-                background: 'rgba(127, 187, 179, 0.12)',
-                color: '#7FBBB3',
-                border: '1px solid rgba(127, 187, 179, 0.25)',
-              }}
-              title="Auth will be wired in Phase 6"
+            // ── Guest state — show Login button ──────────────────────
+            <Link
+              to="/login"
+              className="btn-primary text-xs px-4 py-1.5 font-semibold"
             >
-              ● Demo Mode
-            </span>
+              Log In
+            </Link>
           )}
         </div>
       </div>

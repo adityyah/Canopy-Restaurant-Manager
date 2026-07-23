@@ -90,32 +90,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── login ──────────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
-    // POST /auth/login → { access_token, user: { id, email, role } }
-    const response = await api.post<{ access_token: string; user: AuthUser }>(
+    // Step 1: exchange credentials for a JWT
+    const loginResp = await api.post<{ access_token: string; user: { id: string; email: string } }>(
       '/auth/login',
       { email, password },
     )
-    localStorage.setItem('canopy_jwt', response.access_token)
-    localStorage.setItem('canopy_user', JSON.stringify(response.user))
-    setUser(response.user)
+    // Store JWT immediately so the next request has it in its interceptor
+    localStorage.setItem('canopy_jwt', loginResp.access_token)
+
+    // Step 2: fetch the full profile (includes role) from our local backend
+    const me = await api.get<AuthUser>('/auth/me')
+
+    // Store the complete user object and update state
+    localStorage.setItem('canopy_user', JSON.stringify(me))
+    setUser(me)
   }, [])
 
   // ── signup ─────────────────────────────────────────────────────────────
+  // NOTE: POST /auth/signup returns { message, user_id, email } — NOT a JWT.
+  // Supabase requires email confirmation before the user can log in, so we
+  // never auto-login here. The Login page shows a success banner and switches
+  // the form back to 'login' mode.
   const signup = useCallback(async (email: string, password: string) => {
-    // POST /auth/signup → same shape as login
-    const response = await api.post<{ access_token: string; user: AuthUser }>(
+    await api.post<{ message: string; user_id: string; email: string }>(
       '/auth/signup',
       { email, password },
     )
-    localStorage.setItem('canopy_jwt', response.access_token)
-    localStorage.setItem('canopy_user', JSON.stringify(response.user))
-    setUser(response.user)
+    // No JWT or user object is returned — caller must switch to login mode.
   }, [])
 
   // ── logout ─────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
-      await api.post('/auth/logout')
+      const token = localStorage.getItem('canopy_jwt')
+      await api.post('/auth/logout', { access_token: token || '' })
     } catch {
       // Even if the server call fails, clear local state.
     } finally {

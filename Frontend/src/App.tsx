@@ -2,69 +2,136 @@
 // =============================================================================
 // App — Root Component with React Router
 // =============================================================================
-// ── DEVELOPMENT NOTE (Phase 5 preview) ──────────────────────────────────────
-// The LoginPage / Auth flow is built in Phase 6. For now, CustomerTerminal
-// is mounted directly at "/" so we can interact with the full UI immediately.
+// Route map:
+//   /                    → redirect: managers → /manager, customers → /chat
+//   /login               → Login page (public)
+//   /chat                → CustomerTerminal (any logged-in user)
+//   /order-status        → OrderStatusPage  (any logged-in user, stub)
+//   /rewards             → RewardsPage      (any logged-in user, stub)
+//   /settings            → AccountSettings  (any logged-in user)
+//   /manager             → ManagerLayout > OrdersView
+//   /manager/inventory   → ManagerLayout > InventoryView
+//   /manager/insights    → ManagerLayout > InsightsView
+//   *                    → redirect to /
 //
-// Current route map (dev preview):
-//   /                    → CustomerTerminal        ← ACTIVE — no auth gate
-//   /login               → LoginPage              ← future home of auth
-//   /order-status        → OrderStatusPage        (stub)
-//   /rewards             → RewardsPage            (stub)
-//   /manager             → ManagerDashboardPage   (stub)
-//   /manager/inventory   → ManagerInventoryPage   (stub)
-//   /manager/history     → ManagerHistoryPage     (stub)
-//   /manager/analytics   → ManagerAnalyticsPage   (stub)
-//
-// When Phase 6 (auth) lands, swap the "/" route back to <LoginPage /> and
-// restore ProtectedRoute guards on /chat, /order-status, and /rewards.
+// Auth flow:
+//   • AuthProvider reads the session from localStorage on mount.
+//   • SmartRedirect (/) checks user.role and sends to the right home.
+//   • ProtectedRoute guards /chat and /manager/* — redirects to /login.
+//   • ManagerLayout has its own role guard for the manager subtree.
 // =============================================================================
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { AuthProvider } from '@/context/AuthContext'
-import HealthCheck from '@/components/HealthCheck'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from '@/context/AuthContext'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
-// Pages
-import CustomerTerminal     from '@/pages/CustomerTerminal'
-import LoginPage            from '@/pages/LoginPage'
-import OrderStatusPage      from '@/pages/OrderStatusPage'
-import RewardsPage          from '@/pages/RewardsPage'
-import ManagerDashboardPage from '@/pages/ManagerDashboardPage'
-import ManagerInventoryPage from '@/pages/ManagerInventoryPage'
-import ManagerHistoryPage   from '@/pages/ManagerHistoryPage'
-import ManagerAnalyticsPage from '@/pages/ManagerAnalyticsPage'
+
+// Layouts
+import ManagerLayout from '@/layouts/ManagerLayout'
+
+// Pages — Auth
+import Login from '@/pages/Login'
+
+// Pages — Customer
+import CustomerTerminal from '@/pages/CustomerTerminal'
+import OrderStatusPage  from '@/pages/OrderStatusPage'
+import RewardsPage      from '@/pages/RewardsPage'
+import AccountSettings  from '@/pages/AccountSettings'
+
+// Pages — Manager (nested under ManagerLayout)
+import OrdersView    from '@/pages/manager/OrdersView'
+import InventoryView from '@/pages/manager/InventoryView'
+import InsightsView  from '@/pages/manager/InsightsView'
+
+// ---------------------------------------------------------------------------
+// SmartRedirect — sends logged-in users to the right home, guests to /login
+// ---------------------------------------------------------------------------
+
+function SmartRedirect() {
+  const { user, isLoading } = useAuth()
+
+  // Don't redirect while auth is still loading from localStorage
+  if (isLoading) return null
+
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === 'manager') return <Navigate to="/manager" replace />
+  return <Navigate to="/chat" replace />
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ── Phase 5 Preview: CustomerTerminal at root ──────────────── */}
-          {/* Swap back to <LoginPage /> when Phase 6 auth is complete.     */}
-          <Route path="/"             element={<CustomerTerminal />} />
-          <Route path="/login"        element={<LoginPage />} />
+          {/* ── Root — smart redirect based on role ─────────────────── */}
+          <Route path="/" element={<SmartRedirect />} />
 
-          {/* ── Customer routes (stubs — will get ProtectedRoute in P6) ── */}
-          <Route path="/chat"         element={<CustomerTerminal />} />
-          <Route path="/order-status" element={<OrderStatusPage />} />
-          <Route path="/rewards"      element={<RewardsPage />} />
+          {/* ── Public ──────────────────────────────────────────────── */}
+          <Route path="/login" element={<Login />} />
 
-          {/* ── Manager routes (stubs — will get ProtectedRoute in P6) ── */}
-          <Route path="/manager"            element={<ManagerDashboardPage />} />
-          <Route path="/manager/inventory"  element={<ManagerInventoryPage />} />
-          <Route path="/manager/history"    element={<ManagerHistoryPage />} />
-          <Route path="/manager/analytics"  element={<ManagerAnalyticsPage />} />
+          {/* ── Customer routes (any authenticated user) ─────────────── */}
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <CustomerTerminal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/order-status"
+            element={
+              <ProtectedRoute>
+                <OrderStatusPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rewards"
+            element={
+              <ProtectedRoute>
+                <RewardsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <AccountSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ── Manager routes — nested under ManagerLayout ──────────── */}
+          {/*
+            ManagerLayout renders the nav + <Outlet />.
+            ProtectedRoute here checks auth; ManagerLayout checks role.
+            Both guard independently for belt-and-suspenders security.
+          */}
+          <Route
+            path="/manager"
+            element={
+              <ProtectedRoute requiredRole="manager">
+                <ManagerLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* /manager          → OrdersView (index route — pending approvals) */}
+            <Route index            element={<OrdersView />} />
+            {/* /manager/inventory → InventoryView */}
+            <Route path="inventory" element={<InventoryView />} />
+            {/* /manager/insights  → InsightsView */}
+            <Route path="insights"  element={<InsightsView />} />
+          </Route>
+
+          {/* ── Catch-all ────────────────────────────────────────────── */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
-        {/* ── HealthCheck — small floating widget (dev only) ──────────────
-            Sits in the bottom-right corner at z-50, completely unobtrusive.
-            Only renders when Vite's DEV mode is active (not in prod builds).
-        ──────────────────────────────────────────────────────────────────── */}
-        {import.meta.env.DEV && (
-          <div className="fixed bottom-4 right-4 z-50 w-64">
-            <HealthCheck />
-          </div>
-        )}
       </BrowserRouter>
     </AuthProvider>
   )

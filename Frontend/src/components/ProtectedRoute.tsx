@@ -41,9 +41,9 @@ export default function ProtectedRoute({ requiredRole, children }: Props) {
     )
   }
 
-  // Not logged in → redirect to login, preserving the intended destination
+  // Not logged in → redirect to /login, preserving the intended destination
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   // Logged in but wrong role (e.g., customer trying to access /manager)
